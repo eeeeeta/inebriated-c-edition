@@ -1,13 +1,13 @@
 #ifndef MARKOV
 #define MARKOV
 
-extern struct kv_node {
+struct kv_node {
     struct kv_node *next; /* next kv_node for this key */
     char *key;
     char *val;
 };
 
-extern struct vn_node {
+struct vn_node {
     struct kv_node *next; /* which kv_node this val points to */
     char *val;
 };

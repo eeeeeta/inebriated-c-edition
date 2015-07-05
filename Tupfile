@@ -1,0 +1,3 @@
+: markov.c |> gcc -g -Wall -c %f -o %o |> %B.o
+: main.c |> gcc -g -Wall -c %f -o %o |> %B.o
+: main.o markov.o |> gcc -g %f -o %o |> markov

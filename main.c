@@ -5,55 +5,56 @@
 #include <string.h>
 #include <stdlib.h>
 #include "markov.h"
+#define MAXWORDS 100
+
+signed int r2w(char *into, char *from, int mlen) {
+    unsigned int spaces = 0, i = 0;
+    for (; from[i] != '\0'; i++) {
+        if (i >= mlen) break;
+        if (from[i] == ' ' && ++spaces == 2) break;
+    }
+    strncpy(into, from, i++);
+    return (from[i] == '\0' ? (i - i*2) : i);
+}
+void read_data(char *text) {
+    char **words = (char **) calloc(MAXWORDS, sizeof(char));
+    signed int read_last = 0;
+    for (unsigned int pno = 0;; pno++) {
+        unsigned char *buf = (char *) calloc(MAXWORDS, sizeof(char));
+        read_last = r2w(buf, text, MAXWORDS);
+        words[pno] = buf;
+        if (read_last < 0) {
+            break;
+        }
+        text += read_last;
+    }
+    unsigned int mode = 0;
+    unsigned int last = 0;
+    for (unsigned int word = 0; words[word] != NULL; word += 1) {
+        if (word == 0) continue;
+        store_kv(words[word-1], words[word]);
+    }
+    free(words);
+    return;
+}
+char *read_input(FILE *fp) {
+    char *buf = (char *) calloc(MAXWORDS, sizeof(char));
+    register unsigned int i = 0;
+    for (char c; c != EOF && c != '\n'; c = fgetc(fp)) {
+        if (i >= MAXWORDS) break;
+        /* FIXME: why does fgetc(stdin) sometimes return a null? */
+        if (c == '\0') c = fgetc(fp);
+        buf[i++] = c;
+    }
+    if (ferror(fp)) {
+        perror("reading file in read_input()");
+    }
+    read_data(buf);
+}
 
 int main() {
-    printf("shitty thing v1, test edition\n");
-    char tk[] = "test";
-    char tv[] = "testval";
-    char tv2[] = "tv2";
-    char tv3[] = "tv3";
-    char tv4[] = "tv4";
-    struct kv_node *node;
-    printf("ok here we go, time to try and store some shit\n");
-    node = store_kv(&tk, &tv);
-    if (node == NULL) {
-        printf("well shit, we got a NULL\n");
-        exit(1);
-    }
-    printf("ok yay\n");
-    printf("ok here we go, time to try and search for that shit\n");
-    struct kv_node *retnode;
-    retnode = search_for_key(&tk);
-    if (retnode == NULL) {
-        printf("well shit, search_for_key returned NULL\n");
-        exit(1);
-    }
-    if (retnode != node) {
-        printf("well shit, addresses differ:\n");
-        printf("stored: %p ", node);
-        printf("ret'd: %p\n", retnode);
-        exit(1);
-    }
-    printf("ok yay\n");
-    printf("ok here we go, time to try and search for shit we didn't put in\n");
-    retnode = search_for_key(&tv);
-    if (retnode != NULL) {
-        printf("wtf? it gave us back something!\n");
-        exit(1);
-    }
-    printf("ok yay\n");
-    printf("trying to store two vals for one key...");
-    node = store_kv(&tk, &tv2);
-    printf("yay!\n");
-    printf("trying to get two vals back...");
-    struct vn_node *vals[100];
-    int vals_retd;
-    vals_retd = get_vals(vals, &tk);
-    printf("yay (vals ret'd: %d)\n", vals_retd);
-    printf("storing shit & then walking...");
-    store_kv(&tv2, &tv3);
-    store_kv(&tv3, &tv4);
-    store_kv(&tv, &tv4);
-    printf("walking now\n");
-    dbg_walk(&tk);
+    printf("markov chatbot (shit edition!) version 0.01-alpha1\n");
+    printf("insert a test string! > ");
+    read_input(stdin);
+    dbg_walk("a b");
 }
