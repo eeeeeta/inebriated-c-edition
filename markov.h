@@ -17,4 +17,5 @@ int get_vals(struct vn_node *into[], char *key);
 int get_ins_pos();
 struct kv_node *store_kv(char *key, char *val);
 
+extern void read_input(FILE *fp);
 #endif
