@@ -1,4 +1,5 @@
 : markov.c |> gcc -g -Wall -c %f -o %o |> %B.o
 : main.c |> gcc -g -Wall -c %f -o %o |> %B.o
 : parser.c |> gcc -g -Wall -c %f -o %o |> %B.o
-: main.o parser.o markov.o |> gcc -g %f -o %o |> markov
+: save.c |> gcc -g -Wall -c %f -o %o |> %B.o
+: main.o save.o parser.o markov.o |> gcc -g %f -o %o |> markov

@@ -6,11 +6,7 @@
 #include <stdlib.h>
 #include "markov.h"
 
-#define MAXLEN 130 /* maximum length of two word pairs */
-#define DBSIZE 100
-#define MAXVALS 100
-
-static struct kv_node *keys[DBSIZE];
+struct kv_node *keys[DBSIZE];
 
 struct kv_node *search_for_key(char *key) {
     static struct kv_node *curnode;
@@ -25,7 +21,6 @@ struct kv_node *search_for_key(char *key) {
 int get_vals(struct vn_node *into[], char *key) {
     static struct kv_node *kv;
     kv = search_for_key(key);
-    int valc = 0;
     if (kv == NULL) {
         return 0;
     }
@@ -93,6 +88,7 @@ struct kv_node *store_kv(char *key, char *val) {
         }
         kv->key = key;
         kv->val = val;
+        kv->next = NULL;
         keys[get_ins_pos()] = kv;
         return kv;
     }

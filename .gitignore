@@ -3,3 +3,4 @@ markov
 *.o
 docs/*
 .tup/
+*.mkdb

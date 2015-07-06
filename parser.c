@@ -16,7 +16,7 @@ static signed int r2w(char *into, char *from, int mlen) {
     strncpy(into, from, i++);
     return (from[i] == '\0' ? (i - i*2) : i);
 }
-static void read_data(char *text) {
+extern void read_data(char *text) {
     char **words = calloc(MAXWORDS, sizeof(char));
     signed int read_last = 0;
     for (unsigned int pno = 0;; pno++) {
@@ -48,5 +48,6 @@ extern void read_input(FILE *fp) {
         perror("reading file in read_input()");
     }
     read_data(buf);
+    save();
     return;
 }
