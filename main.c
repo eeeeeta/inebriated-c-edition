@@ -3,11 +3,13 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include "markov.h"
 
 int main() {
     printf("markov chatbot (shit edition!) version 0.01-alpha1\n");
     markov_database = db_init();
+    srand(time(0));
     /*printf("enter test strings:\n");
     for (int i = 0; i < 5; i++) {
         printf("> ");
@@ -25,8 +27,18 @@ int main() {
     printf("loading in database...\n");
     int retval = load();
     printf("returned %d\n", retval);
+    printf("running generate_sentence()...");
+    char *sent = generate_sentence();
+    if (sent == NULL) {
+        printf("error\n");
+        perror("generate_sentence()");
+        exit(EXIT_FAILURE);
+    }
+    printf("done\n");
+    printf("Sentence: \"%s\"", sent);
+    /*
     printf("saving database...\n");
     retval = save();
-    printf("returned %d\n", retval);
+    printf("returned %d\n", retval);*/
     exit(EXIT_SUCCESS);
 }

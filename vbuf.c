@@ -28,13 +28,9 @@ extern struct kv_node *db_store(struct kv_node *obj, Database *db) {
         if (ptr == NULL) return NULL;
         db->keys = ptr;
         db->size += DB_REFILL_SIZE;
-        (db->keys)[(db->used)++] = obj;
-        return obj;
     }
-    else {
-        (db->keys)[(db->used)++] = obj;
-        return obj;
-    }
+    (db->keys)[(db->used)++] = obj;
+    return obj;
 }
 
 /**
@@ -113,6 +109,7 @@ extern struct vn_list *vnlist_init(void) {
     if (vnl->list == NULL) return NULL;
     vnl->used = 0;
     vnl->size = VNLIST_START_SIZE;
+    return vnl;
 }
 /**
  * Add a vn_node to a vn_list, allocating more space if needed.

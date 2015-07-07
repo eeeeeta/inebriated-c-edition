@@ -3,6 +3,7 @@
  */
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <time.h>
 #include "markov.h"
@@ -22,12 +23,9 @@ struct kv_node *search_for_key(char *key) {
     return NULL;
 }
 
-struct vn_list *get_vals(char *key) {
+struct vn_list *get_vals(struct kv_node *kv) {
     struct vn_list *vnl = vnlist_init();
     if (vnl == NULL) return NULL;
-    struct kv_node *kv;
-    kv = search_for_key(key);
-    if (kv == NULL) return NULL;
     if (kv->next == NULL) {
         struct vn_node *vn;
         vn = (struct vn_node *) malloc(sizeof(struct vn_node));
@@ -45,17 +43,51 @@ struct vn_list *get_vals(char *key) {
     }
     return vnl;
 }
-struct kv_node *store_kv(char *key, char *val) {
+/**
+ * Generate a random number between 0 and limit inclusive.
+ */
+static int rand_lim(int limit) {
+    int divisor = RAND_MAX / (limit+1);
+    int retval;
+    do {
+        retval = rand() / divisor;
+    } while (retval > limit);
+    return retval;
+}
+
+extern char *generate_sentence() {
+    struct varstr *sentence = varstr_init();
+    if (sentence == NULL) return NULL;
+    struct kv_node *kv = markov_database->keys[rand_lim(markov_database->used - 1)];
+    if (kv == NULL) {
+        errno = EFAULT;
+        return NULL;
+    }
+    varstr_cat(sentence, kv->key);
+    struct vn_list *vnl = get_vals(kv);
+    for (struct vn_node *vn; vnl != NULL; vnl = get_vals(vn->next)) {
+        vn = vnl->list[rand_lim(vnl->used - 1)];
+        varstr_cat(sentence, " ");
+        varstr_cat(sentence, vn->val);
+        if (vn->next == NULL) break;
+    }
+    char *str;
+    if ((str = varstr_pack(sentence)) == NULL) return NULL;
+    return str;
+}
+/**
+ * Store a key-value pair, key = val.
+ * Returns a pointer to the kv_node in the database or NULL on failure.
+ */
+extern struct kv_node *store_kv(char *key, char *val) {
     struct kv_node *kv;
     if (search_for_key(key) == NULL) {
         kv = malloc(sizeof(struct kv_node));
-        if (kv == NULL) {
-            return NULL;
-        }
+        if (kv == NULL) return NULL;
         kv->key = key;
         kv->val = val;
         kv->next = NULL;
-        db_store(kv, markov_database);
+        kv = db_store(kv, markov_database);
         if (kv == NULL) {
             perror("store_kv()");
         }
