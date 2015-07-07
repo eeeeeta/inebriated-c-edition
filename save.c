@@ -22,23 +22,20 @@ int save(void) {
     }
     struct kv_node *curnode;
     int i = 0;
-    for (curnode = markov_database->keys[i]; curnode != NULL; curnode = markov_database->keys[++i]) {
+    for (curnode = markov_database->keys[i]; i < markov_database->used; curnode = markov_database->keys[++i]) {
         fwrite(&NEWKEY, sizeof(unsigned int), (size_t) 1, fp);
         fwrite(curnode->key, sizeof(char), (size_t) strlen(curnode->key), fp);
         fwrite(&NEWVAL, sizeof(unsigned int), (size_t) 1, fp);
         fwrite(curnode->val, sizeof(char), (size_t) strlen(curnode->val), fp);
-        printf("Saved: %s = %s", curnode->key, curnode->val);
         if (curnode->next != NULL) {
-            struct kv_node *subnode;
+            struct kv_node *subnode = NULL;
             subnode = curnode->next;
             for (; subnode != NULL; subnode = subnode->next) {
                 fwrite(&NEWVAL, sizeof(unsigned int), (size_t) 1, fp);
                 fwrite(subnode->val, sizeof(char), (size_t) strlen(subnode->val), fp);
-                printf(", %s", subnode->val);
             }
         }
         fwrite(&NEWLINE, sizeof(unsigned int), (size_t) 1, fp);
-        printf("\n");
     }
     if (ferror(fp)) {
         perror("save(): writing data");
@@ -75,7 +72,7 @@ int load(void) {
                     perror("load(): failed to pack varstrs");
                     return 1;
                 }
-                printf("loaded: %s = %s\n", k, v);
+                //printf("loaded: %s = %s\n", k, v);
                 store_kv(k, v);
             }
             val = varstr_init();
@@ -88,7 +85,7 @@ int load(void) {
                 perror("load(): failed to pack varstrs");
                 return 1;
             }
-            printf("loaded: %s = %s\n", k, v);
+            //printf("loaded: %s = %s\n", k, v);
             store_kv(k, v);
             mode = 2;
         }
@@ -103,7 +100,8 @@ int load(void) {
             varstr_pushc(key, c);
         }
         else {
-            printf("EVERYTHING IS BROKEN - this should NEVER happen");
+            fprintf(stderr, "EVERYTHING IS BROKEN - this should NEVER happen");
+            return 999;
         }
     }
     return 0;

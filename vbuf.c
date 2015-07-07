@@ -12,7 +12,7 @@
 extern Database *db_init(void) {
     Database *db = malloc(sizeof(Database));
     if (db == NULL) return NULL;
-    db->keys = calloc(DB_START_SIZE, sizeof(struct kv_node));
+    db->keys = calloc(DB_START_SIZE, sizeof(struct kv_node *));
     if (db->keys == NULL) return NULL;
     db->used = 0;
     db->size = DB_START_SIZE;
@@ -24,8 +24,9 @@ extern Database *db_init(void) {
 extern struct kv_node *db_store(struct kv_node *obj, Database *db) {
     if ((db->size - db->used) <= 1) {
         // allocate more space
-        struct kv_node **ptr = realloc(db->keys, (db->size + DB_REFILL_SIZE));
+        struct kv_node **ptr = realloc(db->keys, sizeof(struct kv_node *) * (db->size + DB_REFILL_SIZE));
         if (ptr == NULL) return NULL;
+        memset((ptr + db->size), 0, DB_REFILL_SIZE);
         db->keys = ptr;
         db->size += DB_REFILL_SIZE;
     }
@@ -50,7 +51,7 @@ extern struct varstr *varstr_init(void) {
  */
 static struct varstr *varstr_refill_if_needed(struct varstr *vs, int iu) {
     if ((vs->size - vs->used) <= iu) {
-        char *ptr = realloc(vs->str, (vs->size + VARSTR_REFILL_SIZE));
+        char *ptr = realloc(vs->str, sizeof(char) * (vs->size + iu + VARSTR_REFILL_SIZE));
         if (ptr == NULL) return NULL;
         vs->str = ptr;
         vs->size += VARSTR_REFILL_SIZE;
@@ -117,7 +118,7 @@ extern struct vn_list *vnlist_init(void) {
  */
 extern struct vn_list *vnlist_add(struct vn_list *vnl, struct vn_node *vn) {
     if ((vnl->size - vnl->used) <= 1) {
-        struct vn_node **ptr = realloc(vnl->list, (vnl->size + VNLIST_REFILL_SIZE));
+        struct vn_node **ptr = realloc(vnl->list, sizeof(struct vn_node) *(vnl->size + VNLIST_REFILL_SIZE));
         if (ptr == NULL) return NULL;
         vnl->size += VNLIST_REFILL_SIZE;
         vnl->list = ptr;

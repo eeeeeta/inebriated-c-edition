@@ -46,24 +46,28 @@ extern void read_data(char *text) {
     }
     return;
 }
-extern void read_input(FILE *fp) {
+/**
+ * Read a line of input from file pointer fp (pre-opened).
+ * Returns 1 on EOF, 2 on error, and 0 otherwise.
+ */
+extern int read_input(FILE *fp) {
     struct varstr *buf = varstr_init();
     if (buf == NULL) {
         perror("init varstr in read_input()");
-        return;
+        return 2;
     }
     for (char c = fgetc(fp); c != EOF && c != '\n'; c = fgetc(fp)) {
         if (varstr_pushc(buf, c) == NULL) break;
     }
     if (ferror(fp)) {
         perror("reading file in read_input()");
-        return;
+        return 2;
     }
     char *str;
     if ((str = varstr_pack(buf)) == NULL) {
         perror("packing varstr in read_input()");
-        return;
+        return 2;
     }
     read_data(str);
-    return;
+    return (feof(fp) ? 1 : 0);
 }

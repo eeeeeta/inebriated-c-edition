@@ -15,7 +15,7 @@
 struct kv_node *search_for_key(char *key) {
     struct kv_node *curnode;
     int i = 0;
-    for (curnode = markov_database->keys[i]; curnode != NULL; curnode = markov_database->keys[++i]) {
+    for (curnode = markov_database->keys[i]; i < markov_database->used; curnode = markov_database->keys[++i]) {
         if (strcmp(key, curnode->key) == 0) {
             return curnode;
         }
@@ -58,6 +58,7 @@ static int rand_lim(int limit) {
 extern char *generate_sentence() {
     struct varstr *sentence = varstr_init();
     if (sentence == NULL) return NULL;
+    if (markov_database->used < 2) return NULL;
     struct kv_node *kv = markov_database->keys[rand_lim(markov_database->used - 1)];
     if (kv == NULL) {
         errno = EFAULT;
@@ -80,7 +81,7 @@ extern char *generate_sentence() {
  * Returns a pointer to the kv_node in the database or NULL on failure.
  */
 extern struct kv_node *store_kv(char *key, char *val) {
-    struct kv_node *kv;
+    struct kv_node *kv = NULL;
     if (search_for_key(key) == NULL) {
         kv = malloc(sizeof(struct kv_node));
         if (kv == NULL) return NULL;
@@ -95,7 +96,7 @@ extern struct kv_node *store_kv(char *key, char *val) {
     }
     else {
         kv = malloc(sizeof(struct kv_node));
-        struct kv_node *last_kv;
+        struct kv_node *last_kv = NULL;
         last_kv = search_for_key(key);
         for (;last_kv->next != NULL; last_kv = last_kv->next) {
             if (strcmp(val, last_kv->val)) {
@@ -104,6 +105,7 @@ extern struct kv_node *store_kv(char *key, char *val) {
         }
         kv->key = key;
         kv->val = val;
+        kv->next = NULL;
         last_kv->next = kv;
         return kv;
     }

@@ -16,7 +16,6 @@ struct kv_node {
     struct kv_node *next; /**< next kv_node for this key */
     char *key; /**< key */
     char *val; /**< value */
-    unsigned int starter; /**< is this key a sentence starter? 0 if true */
 };
 
 /**
@@ -46,7 +45,7 @@ struct kv_node *search_for_key(char *key);
 struct kv_node *store_kv(char *key, char *val);
 extern char *generate_sentence();
 
-extern void read_input(FILE *fp);
+extern int read_input(FILE *fp);
 
 int load(void);
 int save(void);
