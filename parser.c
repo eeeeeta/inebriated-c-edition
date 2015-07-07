@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "markov.h"
-#define MAXWORDS 100
+
 
 static signed int r2w(char *into, char *from, int mlen) {
     unsigned int spaces = 0, i = 0;
@@ -28,26 +28,24 @@ extern void read_data(char *text) {
         }
         text += read_last;
     }
-    for (unsigned int word = 0; words[word] != NULL; word += 1) {
+    unsigned int word = 0;
+    for (; words[word] != NULL; word += 1) {
         if (word == 0) continue;
         store_kv(words[word-1], words[word]);
     }
-    free(words);
+    words = realloc(words, sizeof(char) * word);
     return;
 }
 extern void read_input(FILE *fp) {
     char *buf = calloc(MAXWORDS, sizeof(char));
     register unsigned int i = 0;
-    for (char c; c != EOF && c != '\n'; c = fgetc(fp)) {
+    for (char c = fgetc(fp); c != EOF && c != '\n'; c = fgetc(fp)) {
         if (i >= MAXWORDS) break;
-        /* FIXME: why does fgetc(stdin) sometimes return a null? */
-        if (c == '\0') c = fgetc(fp);
         buf[i++] = c;
     }
     if (ferror(fp)) {
         perror("reading file in read_input()");
     }
     read_data(buf);
-    save();
     return;
 }

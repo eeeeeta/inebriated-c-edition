@@ -5,6 +5,7 @@
 #define MAXLEN 130 /* maximum length of two word pairs */
 #define DBSIZE 100
 #define MAXVALS 100
+#define MAXWORDS 100
 
 struct kv_node *keys[DBSIZE];
 struct kv_node {
@@ -25,4 +26,7 @@ struct kv_node **get_db_ptr(void);
 struct kv_node *store_kv(char *key, char *val);
 
 extern void read_input(FILE *fp);
+
+int load(void);
+int save(void);
 #endif
