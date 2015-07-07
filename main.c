@@ -7,6 +7,7 @@
 
 int main() {
     printf("markov chatbot (shit edition!) version 0.01-alpha1\n");
+    markov_database = db_init();
     /*printf("enter test strings:\n");
     for (int i = 0; i < 5; i++) {
         printf("> ");
@@ -21,8 +22,11 @@ int main() {
     else {
         printf("done :D\n");
     }*/
-    printf("loading in database...");
+    printf("loading in database...\n");
     int retval = load();
     printf("returned %d\n", retval);
-    
+    printf("saving database...\n");
+    retval = save();
+    printf("returned %d\n", retval);
+    exit(EXIT_SUCCESS);
 }

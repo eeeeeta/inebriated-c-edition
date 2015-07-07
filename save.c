@@ -21,20 +21,23 @@ int save(void) {
     }
     struct kv_node *curnode;
     int i = 0;
-    for (curnode = keys[i]; curnode != NULL; curnode = keys[++i]) {
+    for (curnode = markov_database->keys[i]; curnode != NULL; curnode = markov_database->keys[++i]) {
         fwrite(&NEWKEY, sizeof(unsigned int), (size_t) 1, fp);
         fwrite(curnode->key, sizeof(char), (size_t) strlen(curnode->key), fp);
         fwrite(&NEWVAL, sizeof(unsigned int), (size_t) 1, fp);
         fwrite(curnode->val, sizeof(char), (size_t) strlen(curnode->val), fp);
+        printf("Saved: %s = %s", curnode->key, curnode->val);
         if (curnode->next != NULL) {
             struct kv_node *subnode;
             subnode = curnode->next;
             for (; subnode != NULL; subnode = subnode->next) {
                 fwrite(&NEWVAL, sizeof(unsigned int), (size_t) 1, fp);
                 fwrite(subnode->val, sizeof(char), (size_t) strlen(subnode->val), fp);
+                printf(", %s", subnode->val);
             }
         }
         fwrite(&NEWLINE, sizeof(unsigned int), (size_t) 1, fp);
+        printf("\n");
     }
     if (ferror(fp)) {
         perror("save(): writing data");
@@ -103,7 +106,7 @@ int load(void) {
     for (; words[word] != NULL; word += 1) {
         if (word == 0) continue;
         store_kv(words[word-1], words[word]);
-        printf("loaded: %s = %s", words[word-1], words[word]);
+        printf("loaded: %s = %s\n", words[word-1], words[word]);
     }
     words = realloc(words, sizeof(char) * word);
     return 0;

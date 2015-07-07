@@ -6,12 +6,13 @@
 #include <stdlib.h>
 #include "markov.h"
 
-struct kv_node *keys[DBSIZE];
-
+/**
+ * Search for a key. Returns a kv_node pointer or NULL on failure.
+ */
 struct kv_node *search_for_key(char *key) {
     static struct kv_node *curnode;
     int i = 0;
-    for (curnode = keys[i]; curnode != NULL; curnode = keys[++i]) {
+    for (curnode = markov_database->keys[i]; curnode != NULL; curnode = markov_database->keys[++i]) {
         if (strcmp(key, curnode->key) == 0) {
             return curnode;
         }
@@ -72,13 +73,6 @@ void dbg_walk(char *key) {
         }
     }
 }
-int get_ins_pos() {
-    struct kv_node *curnode;
-    int i = 0;
-    for (curnode = keys[i]; curnode != NULL; curnode = keys[++i])
-        ;
-    return i;
-}
 struct kv_node *store_kv(char *key, char *val) {
     static struct kv_node *kv;
     if (search_for_key(key) == NULL) {
@@ -89,15 +83,21 @@ struct kv_node *store_kv(char *key, char *val) {
         kv->key = key;
         kv->val = val;
         kv->next = NULL;
-        keys[get_ins_pos()] = kv;
+        db_store(kv, markov_database);
+        if (kv == NULL) {
+            perror("store_kv()");
+        }
         return kv;
     }
     else {
         kv = (struct kv_node *) malloc(sizeof(*kv));
         static struct kv_node *last_kv;
         last_kv = search_for_key(key);
-        for (;last_kv->next != NULL; last_kv = last_kv->next)
-            ;
+        for (;last_kv->next != NULL; last_kv = last_kv->next) {
+            if (strcmp(val, last_kv->val)) {
+                return last_kv;
+            }
+        }
         kv->key = key;
         kv->val = val;
         last_kv->next = kv;
