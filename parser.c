@@ -22,6 +22,10 @@ extern void read_data(char *text) {
     signed int read_last = 0;
     for (last = NULL;;) {
         cur = varstr_init();
+        if (cur == NULL) {
+            perror("init varstr in read_input()");
+            return;
+        }
         read_last = r2w(cur, text, MAXWORDS);
         if (last != NULL) {
             char *v;
@@ -44,6 +48,10 @@ extern void read_data(char *text) {
 }
 extern void read_input(FILE *fp) {
     struct varstr *buf = varstr_init();
+    if (buf == NULL) {
+        perror("init varstr in read_input()");
+        return;
+    }
     for (char c = fgetc(fp); c != EOF && c != '\n'; c = fgetc(fp)) {
         if (varstr_pushc(buf, c) == NULL) break;
     }

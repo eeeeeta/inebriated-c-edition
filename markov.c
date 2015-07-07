@@ -6,12 +6,13 @@
 #include <stdlib.h>
 #include <time.h>
 #include "markov.h"
+#include "vbuf.h"
 
 /**
  * Search for a key. Returns a kv_node pointer or NULL on failure.
  */
 struct kv_node *search_for_key(char *key) {
-    static struct kv_node *curnode;
+    struct kv_node *curnode;
     int i = 0;
     for (curnode = markov_database->keys[i]; curnode != NULL; curnode = markov_database->keys[++i]) {
         if (strcmp(key, curnode->key) == 0) {
@@ -20,64 +21,34 @@ struct kv_node *search_for_key(char *key) {
     }
     return NULL;
 }
-int get_vals(struct vn_node *into[], char *key) {
-    static struct kv_node *kv;
+
+struct vn_list *get_vals(char *key) {
+    struct vn_list *vnl = vnlist_init();
+    if (vnl == NULL) return NULL;
+    struct kv_node *kv;
     kv = search_for_key(key);
-    if (kv == NULL) {
-        return 0;
-    }
+    if (kv == NULL) return NULL;
     if (kv->next == NULL) {
-        static struct vn_node *vn;
-        vn = (struct vn_node *) malloc(sizeof(*vn));
+        struct vn_node *vn;
+        vn = (struct vn_node *) malloc(sizeof(struct vn_node));
         vn->next = search_for_key(kv->val);
         vn->val = kv->val;
-        into[0] = vn;
-        return 1;
+        vnlist_add(vnl, vn);
+        return vnl;
     }
-    int i = 0;
     for (;kv != NULL; kv = kv->next) {
-        static struct vn_node *vn;
+        struct vn_node *vn;
         vn = (struct vn_node *) malloc(sizeof(*vn));
         vn->next = search_for_key(kv->val);
         vn->val = kv->val;
-        into[i++] = vn;
+        vnlist_add(vnl, vn);
     }
-    return i;
-}
-void dbg_walk(char *key) {
-    static struct kv_node *kv;
-    printf("dbg_walk: walking %s\n", key);
-    kv = search_for_key(key);
-    if (kv == NULL) {
-        printf("dbg_walk: no results for '%s'\n", key);
-        return;
-    }
-    static struct vn_node *vals[MAXVALS];
-    static int results_retd = 0;
-    results_retd = get_vals(vals, key);
-    printf("dbg_walk: %d results for '%s'\n", results_retd, key);
-    for (int i = 1; i <= results_retd; i++) {
-        printf("dbg_walk: walking val %d of %s\n", (i-1), key);
-        static struct vn_node *val;
-        val = vals[(i-1)];
-        if (val == NULL) {
-            printf("dbg_walk: EVERYTHING IS BROKEN - if you are a user, godspeed\n");
-            exit(101);
-        }
-        printf("dbg_walk: val %d: %s\n", (i-1), val->val);
-        if (val->next == NULL) {
-            printf("dbg_walk: branch %d of %s ends here\n", (i-1), key);
-        }
-        else {
-            printf("dbg_walk: continuing branch %d of %s ('%s')\n", (i-1), key, val->val);
-            dbg_walk(val->val);
-        }
-    }
+    return vnl;
 }
 struct kv_node *store_kv(char *key, char *val) {
-    static struct kv_node *kv;
+    struct kv_node *kv;
     if (search_for_key(key) == NULL) {
-        kv = (struct kv_node *) malloc(sizeof(*kv));
+        kv = malloc(sizeof(struct kv_node));
         if (kv == NULL) {
             return NULL;
         }
@@ -91,8 +62,8 @@ struct kv_node *store_kv(char *key, char *val) {
         return kv;
     }
     else {
-        kv = (struct kv_node *) malloc(sizeof(*kv));
-        static struct kv_node *last_kv;
+        kv = malloc(sizeof(struct kv_node));
+        struct kv_node *last_kv;
         last_kv = search_for_key(key);
         for (;last_kv->next != NULL; last_kv = last_kv->next) {
             if (strcmp(val, last_kv->val)) {

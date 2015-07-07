@@ -101,12 +101,30 @@ extern char *varstr_pack(struct varstr *vs) {
     //free(vs);
     return ptr;
 };
-/**
- * Obliterate a varstr and its contents off the face of the earth! >:)
- * (free memory used by a varstr)
- */
-extern void varstr_obliterate(struct varstr *vs) {
-    free(vs->str);
-    free(vs);
-};
 
+/**
+ * Initialises a variable list of vn_node objects.
+ * Returns NULL on failure.
+ */
+extern struct vn_list *vnlist_init(void) {
+    struct vn_list *vnl = malloc(sizeof(struct vn_list));
+    if (vnl == NULL) return NULL;
+    vnl->list = calloc(VNLIST_START_SIZE, sizeof(struct vn_node));
+    if (vnl->list == NULL) return NULL;
+    vnl->used = 0;
+    vnl->size = VNLIST_START_SIZE;
+}
+/**
+ * Add a vn_node to a vn_list, allocating more space if needed.
+ * Returns NULL on failure.
+ */
+extern struct vn_list *vnlist_add(struct vn_list *vnl, struct vn_node *vn) {
+    if ((vnl->size - vnl->used) <= 1) {
+        struct vn_node **ptr = realloc(vnl->list, (vnl->size + VNLIST_REFILL_SIZE));
+        if (ptr == NULL) return NULL;
+        vnl->size += VNLIST_REFILL_SIZE;
+        vnl->list = ptr;
+    }
+    (vnl->list)[(vnl->used)++] = vn;
+    return vnl;
+}
