@@ -7,6 +7,8 @@
 #define MAXWORDS 100
 #define DB_START_SIZE 100 /**< Amount of keys the database should start with **/
 #define DB_REFILL_SIZE 10 /**< Amount of keys the database should top itself up with **/
+#define VARSTR_START_SIZE 15 /**< Default variable string start length */
+#define VARSTR_REFILL_SIZE 5 /**< Default variable string refill length */
 
 /**
  * Key-value node.
@@ -50,4 +52,5 @@ extern void read_input(FILE *fp);
 
 int load(void);
 int save(void);
+
 #endif

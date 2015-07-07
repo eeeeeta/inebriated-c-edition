@@ -5,47 +5,57 @@
 #include <string.h>
 #include <stdlib.h>
 #include "markov.h"
+#include "vbuf.h"
 
-
-static signed int r2w(char *into, char *from, int mlen) {
+static signed int r2w(struct varstr *into, char *from, int mlen) {
     unsigned int spaces = 0, i = 0;
     for (; from[i] != '\0'; i++) {
         if (i >= mlen) break;
         if (from[i] == ' ' && ++spaces == 2) break;
     }
-    strncpy(into, from, i++);
+    varstr_ncat(into, from, i++);
     return (from[i] == '\0' ? (i - i*2) : i);
 }
 extern void read_data(char *text) {
-    char **words = calloc(MAXWORDS, sizeof(char));
+    char *last;
+    struct varstr *cur;
     signed int read_last = 0;
-    for (unsigned int pno = 0;; pno++) {
-        char *buf = calloc(MAXWORDS, sizeof(char));
-        read_last = r2w(buf, text, MAXWORDS);
-        words[pno] = buf;
+    for (last = NULL;;) {
+        cur = varstr_init();
+        read_last = r2w(cur, text, MAXWORDS);
+        if (last != NULL) {
+            char *v;
+            if ((v = varstr_pack(cur)) == NULL) {
+                perror("packing varstr in read_input()");
+                return;
+            }
+            store_kv(last, v);
+        }
+        if ((last = varstr_pack(cur)) == NULL) {
+            perror("packing varstr in read_input()");
+            return;
+        }
         if (read_last < 0) {
             break;
         }
         text += read_last;
     }
-    unsigned int word = 0;
-    for (; words[word] != NULL; word += 1) {
-        if (word == 0) continue;
-        store_kv(words[word-1], words[word]);
-    }
-    words = realloc(words, sizeof(char) * word);
     return;
 }
 extern void read_input(FILE *fp) {
-    char *buf = calloc(MAXWORDS, sizeof(char));
-    register unsigned int i = 0;
+    struct varstr *buf = varstr_init();
     for (char c = fgetc(fp); c != EOF && c != '\n'; c = fgetc(fp)) {
-        if (i >= MAXWORDS) break;
-        buf[i++] = c;
+        if (varstr_pushc(buf, c) == NULL) break;
     }
     if (ferror(fp)) {
         perror("reading file in read_input()");
+        return;
     }
-    read_data(buf);
+    char *str;
+    if ((str = varstr_pack(buf)) == NULL) {
+        perror("packing varstr in read_input()");
+        return;
+    }
+    read_data(str);
     return;
 }

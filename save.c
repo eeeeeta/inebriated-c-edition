@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "markov.h"
+#include "vbuf.h"
 
 static const unsigned int NEWKEY = '\x11';
 static const unsigned int NEWVAL = '\x12';
@@ -53,62 +54,58 @@ int load(void) {
         perror("load(): opening file");
         return 1;
     }
-    char *key = calloc(MAXWORDS, sizeof(char));
-    char *val = calloc(MAXWORDS, sizeof(char));
+    struct varstr *key = varstr_init();
+    struct varstr *val = varstr_init();
     int mode = 2; /* 0 = key, 1 = val, 2 = wtf? */
-    int i = 0, j = 0;
-    char **words = (char **) calloc(MAXWORDS * MAXWORDS, sizeof(char));
-    if (key == NULL || val == NULL || words == NULL) {
-        perror("load(): calloc failed");
+    if (key == NULL || val == NULL) {
+        perror("load(): failed to initialise varstrs");
         return 1;
     }
     for (char c = fgetc(fp); c != EOF; c = fgetc(fp)) {
         if (c == '\0') continue;
         if (c == NEWKEY) {
-            key = calloc(MAXWORDS, sizeof(char));
+            key = varstr_init();
             mode = 0;
-            i = 0;
         }
         else if (c == NEWVAL) {
             if (mode == 1) {
-                words[j++] = key;
-                words[j++] = val;
+                char *k = varstr_pack(key);
+                char *v = varstr_pack(val);
+                if (k == NULL || v == NULL) {
+                    perror("load(): failed to pack varstrs");
+                    return 1;
+                }
+                printf("loaded: %s = %s\n", k, v);
+                store_kv(k, v);
             }
-            val = calloc(MAXWORDS, sizeof(char));
+            val = varstr_init();
             mode = 1;
-            i = 0;
         }
         else if (c == NEWLINE) {
-            words[j++] = key;
-            words[j++] = val;
-            i = 0;
+            char *k = varstr_pack(key);
+            char *v = varstr_pack(val);
+            if (k == NULL || v == NULL) {
+                perror("load(): failed to pack varstrs");
+                return 1;
+            }
+            printf("loaded: %s = %s\n", k, v);
+            store_kv(k, v);
             mode = 2;
         }
         else if (mode == 2) {
             errno = EINVAL;
             perror("load(): file corrupted");
         }
-        else if (i >= MAXWORDS) {
-            errno = E2BIG;
-            perror("load(): error processing file");
-        }
         else if (mode == 1) {
-            val[i++] = c;
+            varstr_pushc(val, c);
         }
         else if (mode == 0) {
-            key[i++] = c;
+            varstr_pushc(key, c);
         }
         else {
             printf("EVERYTHING IS BROKEN - this should NEVER happen");
         }
     }
-    unsigned int word = 0;
-    for (; words[word] != NULL; word += 1) {
-        if (word == 0) continue;
-        store_kv(words[word-1], words[word]);
-        printf("loaded: %s = %s\n", words[word-1], words[word]);
-    }
-    words = realloc(words, sizeof(char) * word);
     return 0;
 }
 

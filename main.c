@@ -22,6 +22,7 @@ int main() {
     else {
         printf("done :D\n");
     }*/
+    
     printf("loading in database...\n");
     int retval = load();
     printf("returned %d\n", retval);
