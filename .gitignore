@@ -4,3 +4,4 @@ markov
 docs/*
 .tup/
 *.mkdb
+infile.txt
