@@ -51,8 +51,23 @@ static void infile_with_output(void) {
         perror("infile_with_output()");
         exit(EXIT_FAILURE);
     }
-    while (read_input(fp) == 0)
-        ;
+    printf("determining file length...");
+    int ch, lines;
+    while (EOF != (ch=fgetc(fp)))
+        if (ch=='\n')
+            ++lines;
+    int res = fseek(fp, 0L, SEEK_SET);
+    if (ferror(fp) || (res != 0)) {
+        perror("infile_with_output()");
+        exit(EXIT_FAILURE);
+    }
+    printf("done (%d lines)\n", lines);
+    printf("reading from file... ???%%");
+    int lsf = 0;
+    while (read_input(fp) == 0) {
+        float perc = 100 * ((float) ++lsf / (float) lines);
+        printf("\b\b\b\b%3.0f%%", perc);
+    }
     save_with_output();
 }
 int main(int argc, char *argv[]) {
