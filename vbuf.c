@@ -2,15 +2,23 @@
  * variable data structures, for better memory management (tm)
  */
 #include <stdlib.h>
+#include <wchar.h>
 #include <string.h>
 #include "markov.h"
 #include "vbuf.h"
+
+extern struct database *db_init(void) {
+    struct database *db = malloc(sizeof(struct database));
+    db->objs = kvl_init();
+    db->sses = kvl_init();
+    return db;
+}
 /**
- * Initialises a database object.
+ * Initialises a kv_list object.
  * Returns a pointer to said object, or NULL if there was an error.
  */
-extern Database *db_init(void) {
-    Database *db = malloc(sizeof(Database));
+extern struct kv_list *kvl_init(void) {
+    struct kv_list *db = malloc(sizeof(struct kv_list));
     if (db == NULL) return NULL;
     db->keys = calloc(DB_START_SIZE, sizeof(struct kv_node *));
     if (db->keys == NULL) return NULL;
@@ -19,9 +27,9 @@ extern Database *db_init(void) {
     return db;
 }
 /**
- * Stores obj in db. Returns a pointer to obj if successful, or NULL if there was an error.
+ * Stores obj in kvl. Returns a pointer to obj if successful, or NULL if there was an error.
  */
-extern struct kv_node *db_store(struct kv_node *obj, Database *db) {
+extern struct kv_node *kvl_store(struct kv_node *obj, struct kv_list *db) {
     if ((db->size - db->used) <= 1) {
         // allocate more space
         struct kv_node **ptr = realloc(db->keys, sizeof(struct kv_node *) * (db->size + DB_REFILL_SIZE));
@@ -40,7 +48,7 @@ extern struct kv_node *db_store(struct kv_node *obj, Database *db) {
 extern struct varstr *varstr_init(void) {
     struct varstr *vs = malloc(sizeof(struct varstr));
     if (vs == NULL) return NULL;
-    vs->str = calloc(VARSTR_START_SIZE, sizeof(char));
+    vs->str = calloc(VARSTR_START_SIZE, sizeof(wchar_t));
     if (vs->str == NULL) return NULL;
     vs->used = 0;
     vs->size = VARSTR_START_SIZE;
@@ -51,7 +59,7 @@ extern struct varstr *varstr_init(void) {
  */
 static struct varstr *varstr_refill_if_needed(struct varstr *vs, int iu) {
     if ((vs->size - vs->used) <= iu) {
-        char *ptr = realloc(vs->str, sizeof(char) * (vs->size + iu + VARSTR_REFILL_SIZE));
+        wchar_t *ptr = realloc(vs->str, sizeof(wchar_t) * (vs->size + iu + VARSTR_REFILL_SIZE));
         if (ptr == NULL) return NULL;
         vs->str = ptr;
         vs->size += VARSTR_REFILL_SIZE;
@@ -61,27 +69,27 @@ static struct varstr *varstr_refill_if_needed(struct varstr *vs, int iu) {
 /**
  * Appends a to b using strcat(), allocating more space if needed. Returns pointer to varstr object on success, NULL on failure.
  */
-extern struct varstr *varstr_cat(struct varstr *vs, char *str) {
-    vs = varstr_refill_if_needed(vs, (strlen(str) + 1));
+extern struct varstr *varstr_cat(struct varstr *vs, wchar_t *str) {
+    vs = varstr_refill_if_needed(vs, (wcslen(str) + 1));
     if (vs == NULL) return NULL;
-    vs->used += (strlen(str) + 1);
-    strcat(vs->str, str);
+    vs->used += (wcslen(str) + 1);
+    wcscat(vs->str, str);
     return vs;
 }
 /**
  * Appends a to b using strncat(), allocating more space if needed. Returns pointer to varstr object on success, NULL on failure.
  */
-extern struct varstr *varstr_ncat(struct varstr *vs, char *str, size_t count) {
+extern struct varstr *varstr_ncat(struct varstr *vs, wchar_t *str, size_t count) {
     vs = varstr_refill_if_needed(vs, count + 1);
     if (vs == NULL) return NULL;
     vs->used += (count + 1);
-    strncat(vs->str, str, count);
+    wcsncat(vs->str, str, count);
     return vs;
 }
 /**
- * Append a single char a to b, allocating more space if needed. Returns pointer to varstr object on success, NULL on failure.
+ * Append a single wchar_t a to b, allocating more space if needed. Returns pointer to varstr object on success, NULL on failure.
  */
-extern struct varstr *varstr_pushc(struct varstr *vs, char c) {
+extern struct varstr *varstr_pushc(struct varstr *vs, wchar_t c) {
     vs = varstr_refill_if_needed(vs, 2);
     if (vs == NULL) return NULL;
     (vs->str)[(vs->used)++] = c;
@@ -92,8 +100,8 @@ extern struct varstr *varstr_pushc(struct varstr *vs, char c) {
  * Free unused memory in a variable string & convert it to just a regular string.
  * Returns pointer to regular string, NULL on failure.
  */
-extern char *varstr_pack(struct varstr *vs) {
-    char *ptr = realloc(vs->str, (vs->used + 1));
+extern wchar_t *varstr_pack(struct varstr *vs) {
+    wchar_t *ptr = realloc(vs->str, sizeof(wchar_t) * (vs->used + 1));
     if (ptr == NULL) return NULL;
     //free(vs);
     return ptr;

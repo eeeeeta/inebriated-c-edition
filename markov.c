@@ -2,7 +2,7 @@
  * crappy Markov chains chatbot
  */
 #include <stdio.h>
-#include <string.h>
+#include <wchar.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <time.h>
@@ -12,11 +12,11 @@
 /**
  * Search for a key. Returns a kv_node pointer or NULL on failure.
  */
-struct kv_node *search_for_key(char *key) {
+struct kv_node *search_for_key(wchar_t *key) {
     struct kv_node *curnode;
     int i = 0;
-    for (curnode = markov_database->keys[i]; i < markov_database->used; curnode = markov_database->keys[++i]) {
-        if (strcmp(key, curnode->key) == 0) {
+    for (curnode = markov_database->objs->keys[i]; i < markov_database->objs->used; curnode = markov_database->objs->keys[++i]) {
+        if (wcscmp(key, curnode->key) == 0) {
             return curnode;
         }
     }
@@ -55,11 +55,11 @@ static int rand_lim(int limit) {
     return retval;
 }
 
-extern char *generate_sentence() {
+extern wchar_t *generate_sentence() {
     struct varstr *sentence = varstr_init();
     if (sentence == NULL) return NULL;
-    if (markov_database->used < 2) return NULL;
-    struct kv_node *kv = markov_database->keys[rand_lim(markov_database->used - 1)];
+    if (markov_database->objs->used < 2) return NULL;
+    struct kv_node *kv = markov_database->objs->keys[rand_lim(markov_database->objs->used - 1)];
     if (kv == NULL) {
         errno = EFAULT;
         return NULL;
@@ -68,11 +68,11 @@ extern char *generate_sentence() {
     struct vn_list *vnl = get_vals(kv);
     for (struct vn_node *vn; vnl != NULL; vnl = get_vals(vn->next)) {
         vn = vnl->list[rand_lim(vnl->used - 1)];
-        varstr_cat(sentence, " ");
+        varstr_cat(sentence, L" ");
         varstr_cat(sentence, vn->val);
         if (vn->next == NULL) break;
     }
-    char *str;
+    wchar_t *str;
     if ((str = varstr_pack(sentence)) == NULL) return NULL;
     return str;
 }
@@ -80,7 +80,7 @@ extern char *generate_sentence() {
  * Store a key-value pair, key = val.
  * Returns a pointer to the kv_node in the database or NULL on failure.
  */
-extern struct kv_node *store_kv(char *key, char *val) {
+extern struct kv_node *store_kv(wchar_t *key, wchar_t *val) {
     struct kv_node *kv = NULL;
     if (search_for_key(key) == NULL) {
         kv = malloc(sizeof(struct kv_node));
@@ -88,7 +88,7 @@ extern struct kv_node *store_kv(char *key, char *val) {
         kv->key = key;
         kv->val = val;
         kv->next = NULL;
-        kv = db_store(kv, markov_database);
+        kv = kvl_store(kv, markov_database->objs);
         if (kv == NULL) {
             perror("store_kv()");
         }
@@ -99,7 +99,7 @@ extern struct kv_node *store_kv(char *key, char *val) {
         struct kv_node *last_kv = NULL;
         last_kv = search_for_key(key);
         for (;last_kv->next != NULL; last_kv = last_kv->next) {
-            if (strcmp(val, last_kv->val)) {
+            if (wcscmp(val, last_kv->val)) {
                 return last_kv;
             }
         }

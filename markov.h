@@ -14,8 +14,8 @@
  */
 struct kv_node {
     struct kv_node *next; /**< next kv_node for this key */
-    char *key; /**< key */
-    char *val; /**< value */
+    wchar_t *key; /**< key */
+    wchar_t *val; /**< value */
 };
 
 /**
@@ -24,26 +24,33 @@ struct kv_node {
  */
 struct vn_node {
     struct kv_node *next; /**< which kv_node this val points to */
-    char *val; /**< value */
+    wchar_t *val; /**< value */
 };
 
+/** Database structure */
+struct database {
+    struct kv_list *objs; /**< kv_list of all kv_node objects */
+    struct kv_list *sses; /**< kv_list of all sentence starters */
+};
+extern struct database *db_init(void);
 /**
- * Database object. Used to store a set of kv_node objects dynamically.
+ * Used to store a set of kv_node objects dynamically.
+ * (used to be a database :()
  */
-typedef struct {
+struct kv_list {
     struct kv_node **keys; /**< Array of kv_node objects */
     int used; /**< Objects stored */
     int size; /**< Array size (in kv_node objects) */
-} Database;
+};
 
-extern Database *db_init(void);
-extern struct kv_node *db_store(struct kv_node *obj, Database *db);
+extern struct kv_list *kvl_init(void);
+extern struct kv_node *kvl_store(struct kv_node *obj, struct kv_list *kvl);
 
-Database *markov_database; /**< global Database object */
+struct database *markov_database; /**< global database object */
 
-struct kv_node *search_for_key(char *key);
-struct kv_node *store_kv(char *key, char *val);
-extern char *generate_sentence();
+struct kv_node *search_for_key(wchar_t *key);
+struct kv_node *store_kv(wchar_t *key, wchar_t *val);
+extern wchar_t *generate_sentence();
 
 extern int read_input(FILE *fp);
 

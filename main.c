@@ -5,91 +5,84 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <wchar.h>
 #include "markov.h"
 
-static void load_with_output(void) {
-    printf("loading database...");
+static int load_with_output(void) {
+    wprintf(L"loading database...");
     int retval = load();
+    if (retval == 2) {
+        wprintf(L"you don't have one!\n");
+        return retval;
+    }
     if (retval != 0) {
-        printf("error!\n");
+        wprintf(L"error!\n");
         exit(EXIT_FAILURE);
     }
-    printf("done\n");
+    wprintf(L"done\n");
+    return 0;
 }
 static void gen_with_output(void) {
-    printf("running generate_sentence()...");
-    char *sent = generate_sentence();
+    wprintf(L"running generate_sentence()...");
+    wchar_t *sent = generate_sentence();
     if (sent == NULL) {
-        printf("error\n");
+        wprintf(L"error\n");
         perror("generate_sentence()");
         exit(EXIT_FAILURE);
     }
-    printf("done\n");
-    printf("Sentence: \"%s\"\n", sent);
+    wprintf(L"done\n");
+    wprintf(L"Sentence: \"%ls\"\n", sent);
 }
 static void save_with_output(void) {
-    printf("saving database...");
+    wprintf(L"saving database...");
     int retval = save();
     if (retval != 0) {
-        printf("error!\n");
+        wprintf(L"error!\n");
         exit(EXIT_FAILURE);
     }
-    printf("done\n");
+    wprintf(L"done\n");
     exit(EXIT_SUCCESS);
 }
 static void input_new_data(void) {
-    printf("inputting new data, Control-D to stop\n");
+    wprintf(L"inputting new data, Control-D to stop\n");
     while (read_input(stdin) == 0)
         ;
     save_with_output();
 }
 static void infile_with_output(void) {
-    printf("inputting new data from file './infile.txt'\n");
+    wprintf(L"inputting new data from file './infile.txt'\n");
     FILE *fp;
     fp = fopen("./infile.txt", "r");
     if (fp == NULL) {
         perror("infile_with_output()");
         exit(EXIT_FAILURE);
     }
-    printf("determining file length...");
-    int ch, lines;
-    while (EOF != (ch=fgetc(fp)))
-        if (ch=='\n')
-            ++lines;
-    int res = fseek(fp, 0L, SEEK_SET);
-    if (ferror(fp) || (res != 0)) {
-        perror("infile_with_output()");
-        exit(EXIT_FAILURE);
-    }
-    printf("done (%d lines)\n", lines);
-    printf("reading from file... ???%%");
-    int lsf = 0;
-    while (read_input(fp) == 0) {
-        float perc = 100 * ((float) ++lsf / (float) lines);
-        printf("\b\b\b\b%3.0f%%", perc);
-    }
+    wprintf(L"reading from file (can take some time)...");
+    while (read_input(fp) == 0)
+        ;
+    wprintf(L"done!\n");
     save_with_output();
 }
 int main(int argc, char *argv[]) {
-    printf("inebriated, C version, by eeeeeta\n");
+    wprintf(L"inebriated, C version, by eeeeeta\n");
     markov_database = db_init();
     srand(time(0));
     if (argc < 2) {
-        fprintf(stderr, "Syntax: %s [action]\n", argv[0]);
-        fprintf(stderr, "action: one of [input, gen, infile]\n");
+        fwprintf(stderr, L"Syntax: %s [action]\n", argv[0]);
+        fwprintf(stderr, L"action: one of [input, gen, infile]\n");
         exit(EXIT_FAILURE);
     }
-    load_with_output();
+    int ret = load_with_output();
     if (strcmp("input", argv[1]) == 0) {
         input_new_data();
     }
-    else if (strcmp("gen", argv[1]) == 0) {
+    else if (strcmp("gen", argv[1]) == 0 && ret != 2) {
         gen_with_output();
     }
     else if (strcmp("infile", argv[1]) == 0) {
         infile_with_output();
     }
     else {
-        fprintf(stderr, "unrecognized action\n");
+        fwprintf(stderr, L"[!] Either you didn't specify a valid action, or you tried to use the database without having one.\n");
     }
 }

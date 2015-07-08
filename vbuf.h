@@ -8,16 +8,16 @@
  * Expandable variable-length string.
  */
 struct varstr {
-    char *str; /**< string */
-    int used; /**< chars used (not including null) */
+    wchar_t *str; /**< string */
+    int used; /**< wchar_ts used (not including null) */
     int size; /**< size of string (including null) */
 };
 
 extern struct varstr *varstr_init(void);
-extern struct varstr *varstr_cat(struct varstr *vs, char *str);
-extern struct varstr *varstr_ncat(struct varstr *vs, char *str, size_t count);
-extern struct varstr *varstr_pushc(struct varstr *vs, char c);
-extern char *varstr_pack(struct varstr *vs);
+extern struct varstr *varstr_cat(struct varstr *vs, wchar_t *str);
+extern struct varstr *varstr_ncat(struct varstr *vs, wchar_t *str, size_t count);
+extern struct varstr *varstr_pushc(struct varstr *vs, wchar_t c);
+extern wchar_t *varstr_pack(struct varstr *vs);
 
 /**
  * Expandable variable-length list of value-next nodes (vn_node)

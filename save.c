@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <string.h>
+#include <wchar.h>
 #include "markov.h"
 #include "vbuf.h"
 
@@ -22,17 +22,17 @@ int save(void) {
     }
     struct kv_node *curnode;
     int i = 0;
-    for (curnode = markov_database->keys[i]; i < markov_database->used; curnode = markov_database->keys[++i]) {
+    for (curnode = markov_database->objs->keys[i]; i < markov_database->objs->used; curnode = markov_database->objs->keys[++i]) {
         fwrite(&NEWKEY, sizeof(unsigned int), (size_t) 1, fp);
-        fwrite(curnode->key, sizeof(char), (size_t) strlen(curnode->key), fp);
+        fwrite(curnode->key, sizeof(wchar_t), (size_t) wcslen(curnode->key), fp);
         fwrite(&NEWVAL, sizeof(unsigned int), (size_t) 1, fp);
-        fwrite(curnode->val, sizeof(char), (size_t) strlen(curnode->val), fp);
+        fwrite(curnode->val, sizeof(wchar_t), (size_t) wcslen(curnode->val), fp);
         if (curnode->next != NULL) {
             struct kv_node *subnode = NULL;
             subnode = curnode->next;
             for (; subnode != NULL; subnode = subnode->next) {
                 fwrite(&NEWVAL, sizeof(unsigned int), (size_t) 1, fp);
-                fwrite(subnode->val, sizeof(char), (size_t) strlen(subnode->val), fp);
+                fwrite(subnode->val, sizeof(wchar_t), (size_t) wcslen(subnode->val), fp);
             }
         }
         fwrite(&NEWLINE, sizeof(unsigned int), (size_t) 1, fp);
@@ -43,11 +43,16 @@ int save(void) {
     }
     return 0;
 }
-
+/**
+ * Load the database. Returns 0 on success, 1 on error, and 2 if you don't have one.
+ */
 int load(void) {
     FILE *fp;
     fp = fopen(filename, "r");
     if (fp == NULL) {
+        if (errno == ENOENT) {
+            return 2;
+        }
         perror("load(): opening file");
         return 1;
     }
@@ -58,7 +63,7 @@ int load(void) {
         perror("load(): failed to initialise varstrs");
         return 1;
     }
-    for (char c = fgetc(fp); c != EOF; c = fgetc(fp)) {
+    for (wchar_t c = fgetwc(fp); c != EOF; c = fgetwc(fp)) {
         if (c == '\0') continue;
         if (c == NEWKEY) {
             key = varstr_init();
@@ -66,8 +71,8 @@ int load(void) {
         }
         else if (c == NEWVAL) {
             if (mode == 1) {
-                char *k = varstr_pack(key);
-                char *v = varstr_pack(val);
+                wchar_t *k = varstr_pack(key);
+                wchar_t *v = varstr_pack(val);
                 if (k == NULL || v == NULL) {
                     perror("load(): failed to pack varstrs");
                     return 1;
@@ -79,8 +84,8 @@ int load(void) {
             mode = 1;
         }
         else if (c == NEWLINE) {
-            char *k = varstr_pack(key);
-            char *v = varstr_pack(val);
+            wchar_t *k = varstr_pack(key);
+            wchar_t *v = varstr_pack(val);
             if (k == NULL || v == NULL) {
                 perror("load(): failed to pack varstrs");
                 return 1;
