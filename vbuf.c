@@ -5,40 +5,38 @@
 #include <wchar.h>
 #include <string.h>
 #include "markov.h"
-#include "vbuf.h"
 
 extern struct database *db_init(void) {
     struct database *db = malloc(sizeof(struct database));
-    db->objs = kvl_init();
-    db->sses = kvl_init();
+    db->objs = DPA_init();
+    db->sses = DPA_init();
     return db;
 }
 /**
- * Initialises a kv_list object.
+ * Initialises a dynamic pointer array object.
  * Returns a pointer to said object, or NULL if there was an error.
  */
-extern struct kv_list *kvl_init(void) {
-    struct kv_list *db = malloc(sizeof(struct kv_list));
-    if (db == NULL) return NULL;
-    db->keys = calloc(DB_START_SIZE, sizeof(struct kv_node *));
-    if (db->keys == NULL) return NULL;
-    db->used = 0;
-    db->size = DB_START_SIZE;
-    return db;
+extern DPA *DPA_init(void) {
+    DPA *dpa = malloc(sizeof(dpa));
+    if (dpa == NULL) return NULL;
+    dpa->keys = calloc(DPA_START_SIZE, sizeof(void *));
+    if (dpa->keys == NULL) return NULL;
+    dpa->used = 0;
+    dpa->size = DPA_START_SIZE;
+    return dpa;
 }
 /**
- * Stores obj in kvl. Returns a pointer to obj if successful, or NULL if there was an error.
+ * Stores obj in dpa. Returns a pointer to obj if successful, or NULL if there was an error.
  */
-extern struct kv_node *kvl_store(struct kv_node *obj, struct kv_list *db) {
-    if ((db->size - db->used) <= 1) {
+extern void *DPA_store(DPA *dpa, void *obj) {
+    if ((dpa->size - dpa->used) <= 1) {
         // allocate more space
-        struct kv_node **ptr = realloc(db->keys, sizeof(struct kv_node *) * (db->size + DB_REFILL_SIZE));
+        void **ptr = realloc(dpa->keys, sizeof(void *) * (dpa->size + DPA_REFILL_SIZE));
         if (ptr == NULL) return NULL;
-        memset((ptr + db->size), 0, DB_REFILL_SIZE);
-        db->keys = ptr;
-        db->size += DB_REFILL_SIZE;
+        dpa->keys = ptr;
+        dpa->size += DPA_REFILL_SIZE;
     }
-    (db->keys)[(db->used)++] = obj;
+    (dpa->keys)[(dpa->used)++] = obj;
     return obj;
 }
 
@@ -57,7 +55,7 @@ extern struct varstr *varstr_init(void) {
 /**
  * (internal function) Refill a varstr if space left is less than/equal to iu.
  */
-static struct varstr *varstr_refill_if_needed(struct varstr *vs, size_t iu) {
+static struct varstr *varstr_refill_if_needed(struct varstr *vs, int iu) {
     if ((vs->size - vs->used) <= iu) {
         wchar_t *ptr = realloc(vs->str, sizeof(wchar_t) * (vs->size + iu + VARSTR_REFILL_SIZE));
         if (ptr == NULL) return NULL;
@@ -107,31 +105,3 @@ extern wchar_t *varstr_pack(struct varstr *vs) {
     //free(vs);
     return ptr;
 };
-
-/**
- * Initialises a variable list of vn_node objects.
- * Returns NULL on failure.
- */
-extern struct vn_list *vnlist_init(void) {
-    struct vn_list *vnl = malloc(sizeof(struct vn_list));
-    if (vnl == NULL) return NULL;
-    vnl->list = calloc(VNLIST_START_SIZE, sizeof(struct vn_node));
-    if (vnl->list == NULL) return NULL;
-    vnl->used = 0;
-    vnl->size = VNLIST_START_SIZE;
-    return vnl;
-}
-/**
- * Add a vn_node to a vn_list, allocating more space if needed.
- * Returns NULL on failure.
- */
-extern struct vn_list *vnlist_add(struct vn_list *vnl, struct vn_node *vn) {
-    if ((vnl->size - vnl->used) <= 1) {
-        struct vn_node **ptr = realloc(vnl->list, sizeof(struct vn_node *) * (vnl->size + VNLIST_REFILL_SIZE));
-        if (ptr == NULL) return NULL;
-        vnl->size += VNLIST_REFILL_SIZE;
-        vnl->list = ptr;
-    }
-    (vnl->list)[(vnl->used)++] = vn;
-    return vnl;
-}

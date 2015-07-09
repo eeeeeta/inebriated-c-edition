@@ -6,7 +6,7 @@
 #include <wchar.h>
 #include <wctype.h>
 #include "markov.h"
-#include "vbuf.h"
+
 
 static signed int r2w(struct varstr *into, wchar_t *from) {
     unsigned int spaces = 0, i = 0;

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include <wchar.h>
+#include <wctype.h>
 #include "markov.h"
 
 static int load_with_output(void) {
@@ -23,15 +24,19 @@ static int load_with_output(void) {
     return 0;
 }
 static void gen_with_output(void) {
-    wprintf(L"running generate_sentence()...");
+    wchar_t c = L'y';
+    while (c != EOF) {
     wchar_t *sent = generate_sentence();
     if (sent == NULL) {
         wprintf(L"error\n");
         perror("generate_sentence()");
         exit(EXIT_FAILURE);
     }
-    wprintf(L"done\n");
     wprintf(L"Sentence: \"%ls\"\n", sent);
+    wprintf(L"Another? (ENTER for yes, Ctrl-D to stop) ");
+    c = fgetc(stdin);
+    }
+    exit(EXIT_SUCCESS);
 }
 static void save_with_output(void) {
     wprintf(L"saving database...");

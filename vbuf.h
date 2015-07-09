@@ -2,8 +2,22 @@
 #define _MARKOV_VBUF
 #define VARSTR_START_SIZE 15 /**< Default variable string start length */
 #define VARSTR_REFILL_SIZE 5 /**< Default variable string refill length */
-#define VNLIST_START_SIZE 3 /**< Default variable vn_node list start length */
-#define VNLIST_REFILL_SIZE 2 /**< Default variable vn_node list refill length */
+#define DPA_START_SIZE 25 /**< Default DPA start length */
+#define DPA_REFILL_SIZE 10 /**< Default DPA refill length */
+
+/**
+ * Dynamic Pointer Array: Used to store a set of pointers dynamically.
+ */
+typedef struct {
+    void **keys; /**< Array of objects */
+    int used; /**< Objects stored */
+    int size; /**< Array size (in kv_node objects) */
+} DPA;
+
+extern DPA *DPA_init(void);
+extern void *DPA_store(DPA *dpa, void *obj);
+
+
 /**
  * Expandable variable-length string.
  */
@@ -18,16 +32,4 @@ extern struct varstr *varstr_cat(struct varstr *vs, wchar_t *str);
 extern struct varstr *varstr_ncat(struct varstr *vs, wchar_t *str, size_t count);
 extern struct varstr *varstr_pushc(struct varstr *vs, wchar_t c);
 extern wchar_t *varstr_pack(struct varstr *vs);
-
-/**
- * Expandable variable-length list of value-next nodes (vn_node)
- */
-struct vn_list {
-    struct vn_node **list; /**< list of vn_node nodes */
-    int used; /**< nodes stored */
-    int size; /**< size of array */
-};
-
-extern struct vn_list *vnlist_init(void);
-extern struct vn_list *vnlist_add(struct vn_list *vnl, struct vn_node *vn);
 #endif
