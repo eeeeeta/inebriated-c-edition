@@ -3,6 +3,9 @@ inebriated, C edition
 =====================
 *"everybody's favourite drunkard!"*
 
+.. image:: http://i.imgur.com/GKLP6km.png
+   :align: center
+
 Huh?
 ----
 
@@ -47,7 +50,16 @@ For fun and profit!
 Does it work?
 -------------
 
-Sort of.
+Sort of. On my system, with my dataset (which contains a bunch of Bastard Operator from Hell excuses and dumps from
+IRC chat logs), it generated the following gems:
+
+..
+
+  "Cosmic ray particles crashed through the livecd customization!"
+
+  "Police are examining all internet packets in the channel insane."
+
+  "Little hamster in running wheel had coronary; waiting for replacement to be recompiled"
 
 How can I play with it?
 -----------------------

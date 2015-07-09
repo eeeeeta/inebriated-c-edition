@@ -100,7 +100,7 @@ static void *get_rand_start_kv(DPA *dpa, int mode) {
     }
     DPA *desirable = DPA_init();
     if (desirable == NULL) return NULL;
-    for (int mscore = 7; mscore > -1; mscore--) {
+    for (int mscore = (3 + rand_lim(5)); mscore > -1; mscore--) {
         int i = 0;
             for (struct kv_node *kv = dpa->keys[i++]; i < dpa->used; kv = dpa->keys[i++]) {
                 float dscore = determine_dscore(kv);
