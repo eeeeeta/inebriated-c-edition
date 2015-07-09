@@ -23,12 +23,26 @@ struct kv_node *search_for_key(wchar_t *key) {
     return NULL;
 }
 
+/**
+ * Search for a sentence starter. Returns a kv_node pointer or NULL on failure.
+ */
+struct kv_node *search_for_ss(wchar_t *key) {
+    struct kv_node *curnode;
+    int i = 0;
+    for (curnode = markov_database->sses->keys[i]; i < markov_database->sses->used; curnode = markov_database->sses->keys[++i]) {
+        if (wcscmp(key, curnode->key) == 0) {
+            return curnode;
+        }
+    }
+    return NULL;
+}
+
 struct vn_list *get_vals(struct kv_node *kv) {
     struct vn_list *vnl = vnlist_init();
     if (vnl == NULL) return NULL;
     if (kv->next == NULL) {
         struct vn_node *vn;
-        vn = (struct vn_node *) malloc(sizeof(struct vn_node));
+        vn = malloc(sizeof(struct vn_node));
         vn->next = search_for_key(kv->val);
         vn->val = kv->val;
         vnlist_add(vnl, vn);
@@ -36,7 +50,7 @@ struct vn_list *get_vals(struct kv_node *kv) {
     }
     for (;kv != NULL; kv = kv->next) {
         struct vn_node *vn;
-        vn = (struct vn_node *) malloc(sizeof(*vn));
+        vn = malloc(sizeof(struct vn_node));
         vn->next = search_for_key(kv->val);
         vn->val = kv->val;
         vnlist_add(vnl, vn);
@@ -58,8 +72,11 @@ static int rand_lim(int limit) {
 extern wchar_t *generate_sentence() {
     struct varstr *sentence = varstr_init();
     if (sentence == NULL) return NULL;
-    if (markov_database->objs->used < 2) return NULL;
-    struct kv_node *kv = markov_database->objs->keys[rand_lim(markov_database->objs->used - 1)];
+    if (markov_database->sses->used < 2) {
+        errno = ENXIO;
+        return NULL;
+    }
+    struct kv_node *kv = markov_database->sses->keys[rand_lim(markov_database->sses->used - 1)];
     if (kv == NULL) {
         errno = EFAULT;
         return NULL;
@@ -77,10 +94,10 @@ extern wchar_t *generate_sentence() {
     return str;
 }
 /**
- * Store a key-value pair, key = val.
+ * Store a key-value pair, key = val. (ss = 0 if sentence-starter, 1 if not)
  * Returns a pointer to the kv_node in the database or NULL on failure.
  */
-extern struct kv_node *store_kv(wchar_t *key, wchar_t *val) {
+extern struct kv_node *store_kv(wchar_t *key, wchar_t *val, int ss) {
     struct kv_node *kv = NULL;
     if (search_for_key(key) == NULL) {
         kv = malloc(sizeof(struct kv_node));
@@ -89,6 +106,7 @@ extern struct kv_node *store_kv(wchar_t *key, wchar_t *val) {
         kv->val = val;
         kv->next = NULL;
         kv = kvl_store(kv, markov_database->objs);
+        if (ss == 0) kv = kvl_store(kv, markov_database->sses);
         if (kv == NULL) {
             perror("store_kv()");
         }

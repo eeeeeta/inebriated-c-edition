@@ -25,6 +25,7 @@ extern void read_data(wchar_t *text) {
     wchar_t *last;
     struct varstr *cur;
     signed int read_last = 0;
+    int is_ss = 0;
     for (last = NULL;;) {
         cur = varstr_init();
         if (cur == NULL) {
@@ -38,7 +39,8 @@ extern void read_data(wchar_t *text) {
                 perror("packing varstr in read_input()");
                 return;
             }
-            store_kv(last, v);
+            store_kv(last, v, is_ss);
+            is_ss = 1;
         }
         if ((last = varstr_pack(cur)) == NULL) {
             perror("packing varstr in read_input()");

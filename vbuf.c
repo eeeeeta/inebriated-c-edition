@@ -57,11 +57,12 @@ extern struct varstr *varstr_init(void) {
 /**
  * (internal function) Refill a varstr if space left is less than/equal to iu.
  */
-static struct varstr *varstr_refill_if_needed(struct varstr *vs, int iu) {
+static struct varstr *varstr_refill_if_needed(struct varstr *vs, size_t iu) {
     if ((vs->size - vs->used) <= iu) {
         wchar_t *ptr = realloc(vs->str, sizeof(wchar_t) * (vs->size + iu + VARSTR_REFILL_SIZE));
         if (ptr == NULL) return NULL;
         vs->str = ptr;
+        vs->size += iu;
         vs->size += VARSTR_REFILL_SIZE;
     }
     return vs;
@@ -126,7 +127,7 @@ extern struct vn_list *vnlist_init(void) {
  */
 extern struct vn_list *vnlist_add(struct vn_list *vnl, struct vn_node *vn) {
     if ((vnl->size - vnl->used) <= 1) {
-        struct vn_node **ptr = realloc(vnl->list, sizeof(struct vn_node) *(vnl->size + VNLIST_REFILL_SIZE));
+        struct vn_node **ptr = realloc(vnl->list, sizeof(struct vn_node *) * (vnl->size + VNLIST_REFILL_SIZE));
         if (ptr == NULL) return NULL;
         vnl->size += VNLIST_REFILL_SIZE;
         vnl->list = ptr;

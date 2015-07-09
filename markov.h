@@ -1,13 +1,8 @@
 #ifndef _MARKOV
 #define _MARKOV
 #include <stdio.h>
-#define MAXLEN 130 /* maximum length of two word pairs */
-#define DBSIZE 100
-#define MAXVALS 100
-#define MAXWORDS 100
 #define DB_START_SIZE 100 /**< Amount of keys the database should start with **/
 #define DB_REFILL_SIZE 10 /**< Amount of keys the database should top itself up with **/
-
 
 /**
  * Key-value node.
@@ -49,7 +44,8 @@ extern struct kv_node *kvl_store(struct kv_node *obj, struct kv_list *kvl);
 struct database *markov_database; /**< global database object */
 
 struct kv_node *search_for_key(wchar_t *key);
-struct kv_node *store_kv(wchar_t *key, wchar_t *val);
+struct kv_node *search_for_ss(wchar_t *key);
+struct kv_node *store_kv(wchar_t *key, wchar_t *val, int ss);
 extern wchar_t *generate_sentence();
 
 extern int read_input(FILE *fp);
