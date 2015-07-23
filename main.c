@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
     srand(time(0));
     if (argc < 2) {
         fwprintf(stderr, L"Syntax: %s [action]\n", argv[0]);
-        fwprintf(stderr, L"action: one of [input, gen, infile]\n");
+        fwprintf(stderr, L"action: one of [input, gen, infile, nett]\n");
         exit(EXIT_FAILURE);
     }
     int ret = load_with_output();
@@ -86,6 +86,20 @@ int main(int argc, char *argv[]) {
     }
     else if (strcmp("infile", argv[1]) == 0) {
         infile_with_output();
+    }
+    else if (strcmp("nett", argv[1]) == 0 && ret != 2) {
+    wprintf(L"this time, we are testing (welp)...networking!\n");
+    wprintf(L"init...");
+    int fd;
+    extern int net_init(const char *port);
+    extern int net_listen(int fd);
+    fd = net_init("7070");
+    if (fd == -1) {
+        wprintf(L"failed\n");
+        exit(EXIT_FAILURE);
+    }
+    wprintf(L"done!\nbinding now on fd %d", fd);
+    net_listen(fd);
     }
     else {
         fwprintf(stderr, L"[!] Either you didn't specify a valid action, or you tried to use the database without having one.\n");
