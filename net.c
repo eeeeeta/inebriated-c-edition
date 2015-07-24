@@ -53,7 +53,7 @@ static bool net_send_msg(int fd, enum message msg) {
     }
 }
 static char net_recv_msg(int fd) {
-    char msg;
+    char msg = '?';
     int brcv = 0;
     brcv = recv(fd, &msg, 1, 0);
     if (brcv == 0) {
@@ -73,7 +73,7 @@ static bool net_send_sentence(int fd) {
     pthread_mutex_unlock(&sentence_lock);
     if (sentence == NULL) {
         perror("net_send_sentence(): generate_sentence()");
-        return false;
+        return net_send_msg(fd, MSG_SENTENCE_GENFAILED);
     }
     uint32_t len = wcslen(sentence) * sizeof(wchar_t);
     uint32_t nbo_len = htonl(len);
@@ -85,24 +85,28 @@ static bool net_send_sentence(int fd) {
         return false;
     }
     else if (sent != sizeof(uint32_t)) {
-        fwprintf(stderr, L"net_send_sentence(): sent %d bytes, expected %d", sent, sizeof(uint32_t));
+        fwprintf(stderr, L"net_send_sentence(): sent %d bytes, expected %d\n", sent, sizeof(uint32_t));
         return false;
     }
     for (sent = 0; sent < len;) {
-        sent = send(fd, sentence, wcslen(sentence) * sizeof(wchar_t), 0);
+        sent = send(fd, sentence, len, 0);
         if (sent == -1) {
             perror("net_send_sentence(): send failed");
-            return NULL;
+            return false;
         }
         if (sent == len) break;
         sentence += sent;
         len -= sent;
     }
+    if (net_recv_msg(fd) != MSG_SENTENCE_ACK) {
+        fwprintf(stderr, L"net_send_sentence(): did not recieve ack\n");
+        return false;
+    }
     return true;
 }
 static void *net_fail(int fd) {
     close(fd);
-    wprintf(L"net_fail(): closing fd %d\n", fd);
+    wprintf(L"net_fail(): closing fd %d due to errors\n", fd);
     return NULL;
 }
 static void *net_handler_tfunc(void *fda) {
@@ -115,9 +119,15 @@ static void *net_handler_tfunc(void *fda) {
     while (1) {
         /* main thread program loop */
         if (!net_send_msg(*fd, MSG_SEND_CMD)) break;
-        if ((msg = net_recv_msg(*fd) == INT_FAIL)) break;
+        if ((msg = net_recv_msg(*fd)) == INT_FAIL) {
+            fwprintf(stderr, L"net_handler_tfunc(): error recieving next command (timeout?)\n");
+            break;
+        }
         if (msg == MSG_GET_SENTENCE) {
-            if (!net_send_sentence(*fd)) break;
+            if (!net_send_sentence(*fd)) {
+                msg = INT_FAIL;
+                break;
+            }
         }
         else if (msg == MSG_TERMINATE) break;
         else if (msg == MSG_PONG) continue;
@@ -128,7 +138,7 @@ static void *net_handler_tfunc(void *fda) {
     if (msg == INT_FAIL) return net_fail(*fd);
     else {
         close(*fd);
-        wprintf(L"net_handler_tfunc(): fd %d terminated gracefully", *fd);
+        wprintf(L"net_handler_tfunc(): fd %d terminated\n", *fd);
         return NULL;
     }
 }
@@ -136,6 +146,7 @@ extern int net_init(const char *port) {
     struct addrinfo hints;
     struct addrinfo *info;
     int status, socket_fd;
+    int yes = 1;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -153,6 +164,10 @@ extern int net_init(const char *port) {
         if ((socket_fd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol)) == -1) {
             perror("net_init(): socket() failed");
             continue;
+        }
+        if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+            perror("net_init(): setsockopt() failed");
+            exit(EXIT_FAILURE);
         }
         if (bind(socket_fd, addr->ai_addr, addr->ai_addrlen) == -1) {
             perror("net_init(): bind() failed");
