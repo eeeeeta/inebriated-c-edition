@@ -3,43 +3,66 @@
  */
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/unistd.h>
+#include <sys/fcntl.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <string.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <wchar.h>
 #include <unistd.h>
 #include <stdbool.h>
 #include "vbuf.h"
 #include "markov.h"
+#include "net.h"
 
-#define BACKLOG 10
-
-enum message {
-    MSG_OHAI = '\x01', /*<< (S -> C) welcomes the client */
-    MSG_PONG, /*<< (C -> S) response to MSG_OHAI, also a null command */
-    MSG_SEND_CMD, /**< (S -> C) request to send selection of command */
-    MSG_GET_SENTENCE, /*<< (C -> S) command to display one sentence */
-    MSG_SENTENCE_GENFAILED, /**< (S -> C) tells client of failure to generate sentence (followed with MSG_SEND_CMD) */
-    MSG_SENTENCE_LEN, /*<< (S -> C) followed immediately by uint32_t length in Net Byte Order (big-endian), then sentence (using wchar_t) */
-    MSG_SENTENCE_ACK, /*<< (C -> S) confirms reciept of sentence - server will follow with MSG_SEND_CMD */
-    MSG_TERMINATE, /*<< (C -> S) command to terminate connection */
-    INT_FAIL, /**< used internally to signify a failed message reciept */
-    INT_CLOSED /*<< used internally to signify a closed connection */
-};
-
-pthread_mutex_t sentence_lock;
+pthread_mutex_t sentence_lock; /**< mutex for writing to the markov db (currently unused) */
+/**
+ * Internal function to get an inet address from a struct sockaddr.
+ */
 static void *get_in_addr(struct sockaddr *sa) {
     if (sa->sa_family == AF_INET) {
         return &(((struct sockaddr_in *) sa)->sin_addr);
     }
     return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
+/*
+ * Terminates a connection due to failure.
+ */
+static void *net_fail(int fd) {
+    close(fd);
+    wprintf(L"net_fail(): closing fd %d due to errors\n", fd);
+    return NULL;
+}
+/**
+ * Wrapper for send() that ensures all the data is sent.
+ */
+static int send_all(int fd, const void *buf, size_t length) {
+    size_t total = length;
+    int ret = 0;
+    size_t sent = 0;
+    for (; sent < length;) {
+        ret = send(fd, buf, total, MSG_NOSIGNAL);
+        if (ret == -1) {
+            perror("net_send_sentence(): send failed");
+            return false;
+        }
+        sent += ret;
+        if (sent == length) break;
+        buf += sent;
+        total -= sent;
+    }
+    return sent;
+}
+/**
+ * Sends a message (see enum message type) to a file descriptor (fd).
+ */
 static bool net_send_msg(int fd, enum message msg) {
     char byte = msg;
-    int sent = send(fd, &byte, 1, 0);
+    int sent = send_all(fd, &byte, 1);
     if (sent == -1) {
         perror("net_send_msg(): send failed");
         return false;
@@ -52,25 +75,72 @@ static bool net_send_msg(int fd, enum message msg) {
         return true;
     }
 }
-static char net_recv_msg(int fd) {
-    char msg = '?';
-    int brcv = 0;
-    brcv = recv(fd, &msg, 1, 0);
-    if (brcv == 0) {
-        wprintf(L"net_recv_msg(): connection closed unexpectedly\n");
-        return INT_CLOSED;
+/**
+ * Receives one message (enum message type) from fd, with custom timeout (in ms).
+ * Set timeout to -1 to wait forever.
+ */
+static char net_recv_msg_timed(int fd, int timeout) {
+    char msg = INT_NULL;
+    int brcv = 0, pret = 0;
+    struct pollfd fds[1];
+    fds[0].fd = fd;
+    fds[0].events = POLLIN;
+    pret = poll(fds, 1, timeout);
+    if (pret > 0) {
+        brcv = recv(fd, &msg, 1, 0);
+        if (brcv == 0) {
+            wprintf(L"net_recv_msg_timed(): connection closed unexpectedly\n");
+            net_fail(fd);
+            return INT_CLOSED;
+        }
+        else if (brcv == -1) {
+            perror("net_recv_msg_timed(): recv failed");
+            return INT_FAIL;
+        }
+        return msg;
     }
-    else if (brcv == -1) {
-        perror("net_recv_msg(): recv failed");
+    else if (pret == 0) return INT_TIMEOUT;
+    else {
+        perror("net_recv_msg_timed(): poll failed");
         return INT_FAIL;
     }
-    return msg;
 }
+/**
+ * Calls net_recv_msg_timed with the default timeout (NET_TIMEOUT)
+ * (because I'm too lazy to rewrite my code).
+ */
+static char net_recv_msg(int fd) {
+    return net_recv_msg_timed(fd, NET_TIMEOUT);
+}
+/**
+ * Calls net_recv_msg_timed in a loop to check for new messages. If the connection
+ * times out, sends a MSG_OHAI to ensure it's still alive and loops again.
+ */
+static char net_recv_msg_or_ping(int fd) {
+    char msg = INT_NULL;
+    while (1) {
+        msg = net_recv_msg_timed(fd, NET_PING_INTERVAL);
+        if (msg != INT_TIMEOUT) return msg;
+        else if (!net_send_msg(fd, MSG_OHAI)) {
+            net_fail(fd);
+            return INT_CLOSED;
+        }
+        msg = net_recv_msg(fd);
+        if (msg != MSG_PONG) {
+            fwprintf(stderr, L"net_recv_msg_or_ping(): timeout (failed to respond to ping), closing connection\n");
+            net_fail(fd);
+            return INT_CLOSED;
+        }
+        msg = INT_NULL;
+    }
+}
+/**
+ * Sends a generated sentence, generated through generate_sentence(), to file descriptor fd.
+ * (also, waits for the client's ack)
+ */
 static bool net_send_sentence(int fd) {
-    pthread_mutex_lock(&sentence_lock);
     wchar_t *sentence;
     sentence = generate_sentence();
-    pthread_mutex_unlock(&sentence_lock);
     if (sentence == NULL) {
         perror("net_send_sentence(): generate_sentence()");
         return net_send_msg(fd, MSG_SENTENCE_GENFAILED);
@@ -79,7 +149,7 @@ static bool net_send_sentence(int fd) {
     uint32_t nbo_len = htonl(len);
     if (!net_send_msg(fd, MSG_SENTENCE_LEN)) return false;
     int sent = 0;
-    sent = send(fd, &nbo_len, sizeof(uint32_t), 0);
+    sent = send_all(fd, &nbo_len, sizeof(uint32_t));
     if (sent == -1) {
         perror("net_send_sentence(): send failed");
         return false;
@@ -88,39 +158,24 @@ static bool net_send_sentence(int fd) {
         fwprintf(stderr, L"net_send_sentence(): sent %d bytes, expected %d\n", sent, sizeof(uint32_t));
         return false;
     }
-    for (sent = 0; sent < len;) {
-        sent = send(fd, sentence, len, 0);
-        if (sent == -1) {
-            perror("net_send_sentence(): send failed");
-            return false;
-        }
-        if (sent == len) break;
-        sentence += sent;
-        len -= sent;
-    }
+    send_all(fd, sentence, len);
     if (net_recv_msg(fd) != MSG_SENTENCE_ACK) {
         fwprintf(stderr, L"net_send_sentence(): did not recieve ack\n");
         return false;
     }
     return true;
 }
-static void *net_fail(int fd) {
-    close(fd);
-    wprintf(L"net_fail(): closing fd %d due to errors\n", fd);
-    return NULL;
-}
 static void *net_handler_tfunc(void *fda) {
     int *fd = (int *) fda;
     char msg;
-    wprintf(L"dbg: sending fd %d MSG_OHAI\n", *fd);
     if (!net_send_msg(*fd, MSG_OHAI)) return net_fail(*fd);
-    wprintf(L"dbg: waiting for PONG\n");
     if (net_recv_msg(*fd) != MSG_PONG) return net_fail(*fd);
+    wprintf(L"net_handler_tfunc(): handshake completed (fd %d)\n", *fd);
     while (1) {
-        /* main thread program loop */
+        /* main thread loop */
         if (!net_send_msg(*fd, MSG_SEND_CMD)) break;
-        if ((msg = net_recv_msg(*fd)) == INT_FAIL) {
-            fwprintf(stderr, L"net_handler_tfunc(): error recieving next command (timeout?)\n");
+        if ((int) (msg = net_recv_msg_or_ping(*fd)) > (int) INT_FAIL) {
+            fwprintf(stderr, L"net_handler_tfunc(): error receiving next command (fd %d)\n", *fd);
             break;
         }
         if (msg == MSG_GET_SENTENCE) {
@@ -130,12 +185,21 @@ static void *net_handler_tfunc(void *fda) {
             }
         }
         else if (msg == MSG_TERMINATE) break;
+        else if (msg == MSG_OHAI) {
+            if (!net_send_msg(*fd, MSG_PONG)) {
+                fwprintf(stderr, L"net_handler_tfunc(): we failed to return ping (fd %d)\n", *fd);
+                msg = INT_FAIL;
+                break;
+            }
+        }
         else if (msg == MSG_PONG) continue;
         else {
-            fwprintf(stderr, L"net_handler_tfunc(): got unknown message type (%d) from client\n", msg);
+            fwprintf(stderr, L"net_handler_tfunc(): got unknown message type (%d) from fd %d\n", msg, *fd);
         }
     }
     if (msg == INT_FAIL) return net_fail(*fd);
+    else if (msg == INT_TIMEOUT) return net_fail(*fd);
+    else if (msg == INT_CLOSED) return NULL;
     else {
         close(*fd);
         wprintf(L"net_handler_tfunc(): fd %d terminated\n", *fd);
@@ -183,7 +247,7 @@ extern int net_init(const char *port) {
     return socket_fd;
 }
 extern int net_listen(int fd) {
-    if (listen(fd, BACKLOG) == -1) {
+    if (listen(fd, NET_BACKLOG) == -1) {
         perror("net_listen(): listen() failed");
         return 1;
     }
@@ -192,9 +256,6 @@ extern int net_listen(int fd) {
         perror("net_listen(): multithreading: pthread_mutex_init() failed");
         return 1;
     }
-    struct timeval timeout;
-    timeout.tv_sec = 5;
-    timeout.tv_usec = 0;
     char otheraddr_readable[INET6_ADDRSTRLEN];
     pthread_t thread;
     while (1) {
@@ -210,10 +271,10 @@ extern int net_listen(int fd) {
             perror("net_listen(): accept() failed");
             continue;
         }
-        setsockopt(*sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(struct timeval));
+        fcntl(*sockfd, F_SETFL, O_NONBLOCK);
         inet_ntop(addr->ss_family, get_in_addr((struct sockaddr *) addr), otheraddr_readable, sizeof(otheraddr_readable));
         wprintf(L"net_listen(): got connection from %s (fd %d)\n", otheraddr_readable, *sockfd);
-        wprintf(L"dbg: starting thread (welp) to handle fd %d\n", *sockfd);
+        wprintf(L"net_listen(): starting thread to handle fd %d\n", *sockfd);
         pthread_create(&thread, NULL, net_handler_tfunc, sockfd);
     }
 }
