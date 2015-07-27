@@ -2,7 +2,7 @@
 #define _MARKOV
 #include "vbuf.h"
 /**
- * Key-value node.
+ * \brief Key-value node.
  */
 struct kv_node {
     struct kv_node *next; /**< next kv_node for this key */
@@ -12,7 +12,9 @@ struct kv_node {
 };
 
 /**
- * Value-next node. Holds the value, and a pointer to the kv_node which
+ * \brief Value-next node.
+ *
+ * Holds the value, and a pointer to the kv_node which
  * has this value as its key.
  */
 struct vn_node {
@@ -21,7 +23,7 @@ struct vn_node {
     int score; /** how many values the kv_node this val points to has */
 };
 
-/** Database structure */
+/** \brief Database structure */
 struct database {
     DPA *objs; /**< DPA of all kv_node objects */
     DPA *sses; /**< DPA of all sentence starters */

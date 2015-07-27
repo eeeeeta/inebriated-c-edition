@@ -9,9 +9,11 @@
 
 /**
  * Reads two words into a varstr from a UCS-2 string.
+ * Returns (negative if end of string) the amount of characters
+ * to advance the buffer by.
  */
 static signed int r2w(struct varstr *into, wchar_t *from) {
-    unsigned int spaces = 0, i = 0;
+    register int spaces = 0, i = 0;
     wchar_t c = '\2';
     for (; c != '\0'; c = from[i++]) {
         if (iswspace(c) != 0 && ++spaces == 2) break;
@@ -23,6 +25,10 @@ static signed int r2w(struct varstr *into, wchar_t *from) {
     }
     return (c == '\0' ? (i - i*2) : i);
 }
+/**
+ * Loops through text and, calling r2w() on it, breaks it up into (and stores)
+ * kv pairs.
+ */
 extern void read_data(wchar_t *text) {
     wchar_t *last;
     struct varstr *cur;
@@ -31,21 +37,21 @@ extern void read_data(wchar_t *text) {
     for (last = NULL;;) {
         cur = varstr_init();
         if (cur == NULL) {
-            perror("init varstr in read_input()");
+            perror("init varstr in read_data()");
             return;
         }
         read_last = r2w(cur, text);
         if (last != NULL) {
             wchar_t *v;
             if ((v = varstr_pack(cur)) == NULL) {
-                perror("packing varstr in read_input()");
+                perror("packing varstr in read_data()");
                 return;
             }
             store_kv(last, v, is_ss);
             is_ss = 1;
         }
         if ((last = varstr_pack(cur)) == NULL) {
-            perror("packing varstr in read_input()");
+            perror("packing varstr in read_data()");
             return;
         }
         if (read_last < 0) {

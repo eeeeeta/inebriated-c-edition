@@ -47,7 +47,7 @@ static int send_all(int fd, const void *buf, size_t length) {
     for (; sent < length;) {
         ret = send(fd, buf, total, MSG_NOSIGNAL);
         if (ret == -1) {
-            perror("net_send_sentence(): send failed");
+            perror("send_all(): send failed");
             return false;
         }
         sent += ret;
@@ -139,14 +139,34 @@ static char net_recv_msg_or_ping(int fd) {
  * (also, waits for the client's ack)
  */
 static bool net_send_sentence(int fd) {
-    wchar_t *sentence;
-    sentence = generate_sentence();
+    const wchar_t *sentence = generate_sentence();
     if (sentence == NULL) {
         perror("net_send_sentence(): generate_sentence()");
-        return net_send_msg(fd, MSG_SENTENCE_GENFAILED);
+        net_send_msg(fd, MSG_SENTENCE_GENFAILED);
+        return false;
     }
-    uint32_t len = wcslen(sentence) * sizeof(wchar_t);
+    /* entering voodoo magic UTF-8 conversion zone
+     * abandon hope, ye all who enter here */
+    size_t ssize = wcslen(sentence) * sizeof(wchar_t);
+    mbstate_t *ps = malloc(sizeof(mbstate_t));
+    memset(ps, 0, sizeof(mbstate_t));
+    char *utf8_str = malloc(ssize);
+    if (ps == NULL || utf8_str == NULL) {
+        perror("net_send_sentence(): malloc failed");
+        net_send_msg(fd, MSG_SENTENCE_GENFAILED);
+        return false;
+    }
+    uint32_t len = wcsrtombs(utf8_str, &sentence, ssize, ps);
     uint32_t nbo_len = htonl(len);
+    if (len == -1) {
+        perror("net_send_sentence(): unicode conversion failed");
+        net_send_msg(fd, MSG_SENTENCE_GENFAILED);
+        return false;
+    }
+    if (sentence != NULL) {
+        fwprintf(stderr, L"net_send_sentence(): unicode conversion failed: not all data converted (?!)\n");
+        return false;
+    }
     if (!net_send_msg(fd, MSG_SENTENCE_LEN)) return false;
     int sent = 0;
     sent = send_all(fd, &nbo_len, sizeof(uint32_t));
@@ -158,7 +178,7 @@ static bool net_send_sentence(int fd) {
         fwprintf(stderr, L"net_send_sentence(): sent %d bytes, expected %d\n", sent, sizeof(uint32_t));
         return false;
     }
-    send_all(fd, sentence, len);
+    send_all(fd, utf8_str, len);
     if (net_recv_msg(fd) != MSG_SENTENCE_ACK) {
         fwprintf(stderr, L"net_send_sentence(): did not recieve ack\n");
         return false;

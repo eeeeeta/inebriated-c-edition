@@ -6,7 +6,7 @@
 #define DPA_REFILL_SIZE 10 /**< Default DPA refill length */
 
 /**
- * Dynamic Pointer Array: Used to store a set of pointers dynamically.
+ * \brief Dynamic Pointer Array: Used to store a set of pointers dynamically.
  */
 typedef struct {
     void **keys; /**< Array of objects */
@@ -19,7 +19,7 @@ extern void *DPA_store(DPA *dpa, void *obj);
 
 
 /**
- * Expandable variable-length UCS-2 string.
+ * \brief Expandable variable-length UCS-2 string.
  */
 struct varstr {
     wchar_t *str; /**< string */
@@ -34,7 +34,7 @@ extern struct varstr *varstr_pushc(struct varstr *vs, wchar_t c);
 extern wchar_t *varstr_pack(struct varstr *vs);
 
 /**
- * Expandable variable-length UTF-8 input buffer.
+ * \brief Expandable variable-length UTF-8 input buffer.
  */
 struct utf8_buf {
     char *str;
