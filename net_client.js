@@ -30,7 +30,7 @@ var parseLen = function(buf) {
     lenbuf = null;
 }
 var parseSentence = function() {
-    console.log('sentence: ' + sbuf.toString('utf8'));
+    console.log('sentence: ' + sbuf.toString('ucs-2'));
     lenbuf = null
     lenbuf_written = 0;
     sbuf = null;
@@ -51,6 +51,7 @@ var sbuf = null;
 var sbuf_written = 0;
 sock.on('data', function(buf) {
     console.log('got data of len ' + buf.length);
+    console.log(buf.toString('ucs-2'));
     ready = false;
     if (lenbuf) {
         lenbuf = Buffer.concat([lenbuf, buf]);

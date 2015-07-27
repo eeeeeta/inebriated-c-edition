@@ -7,7 +7,9 @@
 #include <wctype.h>
 #include "markov.h"
 
-
+/**
+ * Reads two words into a varstr from a UCS-2 string.
+ */
 static signed int r2w(struct varstr *into, wchar_t *from) {
     unsigned int spaces = 0, i = 0;
     wchar_t c = '\2';
@@ -58,21 +60,21 @@ extern void read_data(wchar_t *text) {
  * Returns 1 on EOF, 2 on error, and 0 otherwise.
  */
 extern int read_input(FILE *fp) {
-    struct varstr *buf = varstr_init();
+    struct utf8_buf *buf = u8b_init();
     if (buf == NULL) {
-        perror("init varstr in read_input()");
+        perror("init u8b in read_input()");
         return 2;
     }
-    for (wchar_t c = fgetwc(fp); c != EOF && c != '\n'; c = fgetwc(fp)) {
-        if (varstr_pushc(buf, c) == NULL) break;
+    for (char c = fgetc(fp); c != EOF && c != '\n'; c = fgetc(fp)) {
+        if (u8b_pushc(buf, c) == NULL) break;
     }
     if (ferror(fp)) {
         perror("reading file in read_input()");
         return 2;
     }
     wchar_t *str;
-    if ((str = varstr_pack(buf)) == NULL) {
-        perror("packing varstr in read_input()");
+    if ((str = u8b_pack(buf)) == NULL) {
+        perror("packing u8b in read_input()");
         return 2;
     }
     read_data(str);

@@ -93,7 +93,6 @@ extern struct varstr *varstr_pushc(struct varstr *vs, wchar_t c) {
     if (vs == NULL) return NULL;
     (vs->str)[(vs->used)++] = c;
     return vs;
-
 }
 /**
  * Free unused memory in a variable string & convert it to just a regular string.
@@ -102,6 +101,45 @@ extern struct varstr *varstr_pushc(struct varstr *vs, wchar_t c) {
 extern wchar_t *varstr_pack(struct varstr *vs) {
     wchar_t *ptr = realloc(vs->str, sizeof(wchar_t) * (vs->used + 1));
     if (ptr == NULL) return NULL;
-    //free(vs);
     return ptr;
+};
+
+/**
+ * Initialises a variable UTF-8 buffer object. Returns pointer on success, NULL on failure.
+ */
+extern struct utf8_buf *u8b_init(void) {
+    struct utf8_buf *vs = malloc(sizeof(struct utf8_buf));
+    if (vs == NULL) return NULL;
+    vs->str = calloc(VARSTR_START_SIZE, sizeof(char));
+    if (vs->str == NULL) return NULL;
+    vs->used = 0;
+    vs->size = VARSTR_START_SIZE;
+    return vs;
+}
+/**
+ * Append a single UTF-8 character a to b, allocating more space if needed. Returns pointer to u8buf object on success, NULL on failure.
+ */
+extern struct utf8_buf *u8b_pushc(struct utf8_buf *vs, char c) {
+    if ((vs->size - vs->used) <= 1) {
+        char *ptr = realloc(vs->str, sizeof(char) * (vs->size + VARSTR_REFILL_SIZE));
+        if (ptr == NULL) return NULL;
+        vs->str = ptr;
+        vs->size += VARSTR_REFILL_SIZE;
+    }
+    if (vs == NULL) return NULL;
+    (vs->str)[(vs->used)++] = c;
+    return vs;
+
+}
+/**
+ * Free unused memory in a variable UTF-8 string & convert it to a UCS-2 string.
+ * Returns pointer to string, NULL on failure.
+ */
+extern wchar_t *u8b_pack(struct utf8_buf *vs) {
+    wchar_t *wstr = malloc(sizeof(wchar_t) * vs->used + 1);
+    mbstate_t *ps = malloc(sizeof(mbstate_t));
+    if (ps == NULL || wstr == NULL) return NULL;
+    memset(ps, 0, sizeof(mbstate_t));
+    if (mbsrtowcs(wstr, (const char **) &vs->str, vs->used + 1, ps) == -1) return NULL;
+    return wstr;
 };
