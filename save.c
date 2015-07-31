@@ -32,22 +32,22 @@ static void *save_tfunc(void *filename) {
     struct kv_node *curnode;
     int i = 0;
     for (curnode = markov_database->objs->keys[i]; i < markov_database->objs->used; curnode = markov_database->objs->keys[++i]) {
-        fwrite(&NEWKEY, sizeof(wchar_t), 1, fp);
+        fputwc(NEWKEY, fp);
         if (search_for_ss(curnode->key) == curnode) {
-            fwrite(&SENTENCE_STARTER, sizeof(wchar_t), 1, fp);
+            fputwc(SENTENCE_STARTER, fp);
         }
-        fwrite(curnode->key, sizeof(wchar_t), wcslen(curnode->key), fp);
-        fwrite(&NEWVAL, sizeof(wchar_t), 1, fp);
-        fwrite(curnode->val, sizeof(wchar_t), wcslen(curnode->val), fp);
+        fputws(curnode->key, fp);
+        fputwc(NEWVAL, fp);
+        fputws(curnode->val, fp);
         if (curnode->next != NULL) {
             struct kv_node *subnode = NULL;
             subnode = curnode->next;
             for (; subnode != NULL; subnode = subnode->next) {
-                fwrite(&NEWVAL, sizeof(wchar_t), 1, fp);
-                fwrite(subnode->val, sizeof(wchar_t), wcslen(subnode->val), fp);
+                fputwc(NEWVAL, fp);
+                fputws(subnode->val, fp);
             }
         }
-        fwrite(&NEWLINE, sizeof(wchar_t), 1, fp);
+        fputwc(NEWLINE, fp);
     }
     if (ferror(fp)) {
         perror("save_tfunc(): writing data");
@@ -60,11 +60,11 @@ static void *save_tfunc(void *filename) {
 }
 extern bool save(char *filename) {
     if (!pthreads_ready) {
-    if (pthread_mutex_init(&db_lock, NULL) != 0) {
-        perror("save(): pthread_mutex_init failed");
-        return false;
-    }
-    pthreads_ready = true;
+        if (pthread_mutex_init(&db_lock, NULL) != 0) {
+            perror("save(): pthread_mutex_init failed");
+            return false;
+        }
+        pthreads_ready = true;
     }
     pthread_t thread;
     void *retval;
@@ -105,8 +105,12 @@ extern int load(char *filename) {
         return 1;
     }
     for (wchar_t c = fgetwc(fp); c != EOF; c = fgetwc(fp)) {
-        if (c == L'\0') continue;
+        if (c == L'\0') {
+            fwprintf(stderr, L"load(): Your database has wide-character encoding issues.\n");
+            return 1;
+        }
         if (c == NEWKEY) {
+            free(key);
             key = varstr_init();
             mode = 0;
             sentence_starter = 1;
@@ -121,6 +125,7 @@ extern int load(char *filename) {
                 }
                 store_kv(k, v, sentence_starter);
             }
+            free(val);
             val = varstr_init();
             mode = 1;
         }
@@ -152,6 +157,8 @@ extern int load(char *filename) {
             return 999;
         }
     }
+    free(key);
+    free(val);
     return 0;
 }
 

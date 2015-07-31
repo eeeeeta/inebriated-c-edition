@@ -27,6 +27,23 @@ extern DPA *DPA_init(void) {
     return dpa;
 }
 /**
+ * Removes obj from dpa, by swapping the last object of dpa->keys into the slot where
+ * obj was, and setting that object to NULL whilst decrementing dpa->used.
+ *
+ * Does NOT make any attempt to free() obj, do this yourself. Returns false if object
+ * does not exist.
+ */
+extern bool *DPA_rem(DPA *dpa, void *obj) {
+    int i = 0, j = -1;
+    for (void *tbr = dpa->keys[i]; i < dpa->used; tbr = dpa->keys[++i])
+        if (tbr == obj) j = i;
+    if (j == -1) return false;
+    dpa->keys[j] = dpa->keys[i - 1];
+    dpa->keys[i - 1] = NULL;
+    dpa->used--;
+    return true;
+}
+/**
  * Stores obj in dpa. Returns a pointer to obj if successful, or NULL if there was an error.
  */
 extern void *DPA_store(DPA *dpa, void *obj) {
@@ -40,6 +57,12 @@ extern void *DPA_store(DPA *dpa, void *obj) {
     (dpa->keys)[(dpa->used)++] = obj;
     return obj;
 }
+
+extern void DPA_free(DPA *dpa) {
+    free(dpa->keys);
+    free(dpa);
+}
+
 
 /**
  * Initialises a variable string object. Returns pointer on success, NULL on failure.
@@ -105,42 +128,3 @@ extern wchar_t *varstr_pack(struct varstr *vs) {
     return ptr;
 };
 
-/**
- * Initialises a variable UTF-8 buffer object. Returns pointer on success, NULL on failure.
- */
-extern struct utf8_buf *u8b_init(void) {
-    struct utf8_buf *vs = malloc(sizeof(struct utf8_buf));
-    if (vs == NULL) return NULL;
-    vs->str = calloc(VARSTR_START_SIZE, sizeof(char));
-    if (vs->str == NULL) return NULL;
-    vs->used = 0;
-    vs->size = VARSTR_START_SIZE;
-    return vs;
-}
-/**
- * Append a single UTF-8 character a to b, allocating more space if needed. Returns pointer to u8buf object on success, NULL on failure.
- */
-extern struct utf8_buf *u8b_pushc(struct utf8_buf *vs, char c) {
-    if ((vs->size - vs->used) <= 1) {
-        char *ptr = realloc(vs->str, sizeof(char) * (vs->size + VARSTR_REFILL_SIZE));
-        if (ptr == NULL) return NULL;
-        vs->str = ptr;
-        vs->size += VARSTR_REFILL_SIZE;
-    }
-    if (vs == NULL) return NULL;
-    (vs->str)[(vs->used)++] = c;
-    return vs;
-
-}
-/**
- * Free unused memory in a variable UTF-8 string & convert it to a UCS-2 string.
- * Returns pointer to string, NULL on failure.
- */
-extern wchar_t *u8b_pack(struct utf8_buf *vs) {
-    wchar_t *wstr = malloc(sizeof(wchar_t) * vs->used + 1);
-    mbstate_t *ps = malloc(sizeof(mbstate_t));
-    if (ps == NULL || wstr == NULL) return NULL;
-    memset(ps, 0, sizeof(mbstate_t));
-    if (mbsrtowcs(wstr, (const char **) &vs->str, vs->used + 1, ps) == -1) return NULL;
-    return wstr;
-};

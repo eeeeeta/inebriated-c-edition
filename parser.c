@@ -15,26 +15,29 @@
  */
 static signed int r2w(struct varstr *into, wchar_t *from) {
     register int spaces = 0, i = 0;
-    wchar_t c = '\2';
-    for (; c != '\0'; c = from[i++]) {
+    wchar_t c = L'\2';
+    for (; c != L'\0'; c = from[i++]) {
         if (iswspace(c) != 0 && ++spaces == 2) break;
+        if (c == L'\n') break;
         if (iswspace(c) == 0 && iswpunct(c) == 0 && iswalnum(c) == 0) continue;
         if (varstr_pushc(into, c) == NULL) {
             perror("r2w(): varstr_pushc()");
             return -1;
         }
     }
-    return (c == '\0' ? (i - i*2) : i);
+    return (c == L'\0' ? (i - i*2) : i);
 }
 /**
  * Loops through text and, calling r2w() on it, breaks it up into (and stores)
  * kv pairs.
+ *
+ * Set is_sentence according to whether the text should be interpreted as a sentence or not.
  */
-extern bool read_data(wchar_t *text) {
+extern bool read_data(wchar_t *text, bool is_sentence) {
     wchar_t *last;
     struct varstr *cur;
     signed int read_last = 0;
-    int is_ss = 0;
+    int is_ss = (is_sentence ? 0 : 1);
     for (last = NULL;;) {
         cur = varstr_init();
         if (cur == NULL) {
@@ -65,25 +68,27 @@ extern bool read_data(wchar_t *text) {
 /**
  * Read a line of input from file pointer fp (pre-opened).
  * Returns 1 on EOF, 2 on error, and 0 otherwise.
+ *
+ * is_sentence == true if the line is a complete sentence.
  */
-extern int read_input(FILE *fp) {
-    struct utf8_buf *buf = u8b_init();
+extern int read_input(FILE *fp, bool is_sentence) {
+    struct varstr *buf = varstr_init();
     if (buf == NULL) {
-        perror("init u8b in read_input()");
+        perror("init varstr in read_input()");
         return 2;
     }
-    for (char c = fgetc(fp); c != EOF && c != '\n'; c = fgetc(fp)) {
-        if (u8b_pushc(buf, c) == NULL) break;
+    for (wchar_t c = fgetwc(fp); c != EOF && c != L'\n'; c = fgetwc(fp)) {
+        if (varstr_pushc(buf, c) == NULL) break;
     }
     if (ferror(fp)) {
         perror("reading file in read_input()");
         return 2;
     }
     wchar_t *str;
-    if ((str = u8b_pack(buf)) == NULL) {
-        perror("packing u8b in read_input()");
+    if ((str = varstr_pack(buf)) == NULL) {
+        perror("packing varstr in read_input()");
         return 2;
     }
-    if (!read_data(str)) return 2;
+    if (!read_data(str, is_sentence)) return 2;
     return (feof(fp) ? 1 : 0);
 }

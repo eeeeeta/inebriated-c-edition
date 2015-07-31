@@ -182,4 +182,15 @@ extern struct kv_node *store_kv(wchar_t *key, wchar_t *val, int ss) {
         return kv;
     }
 }
-
+extern void kv_free(struct kv_node *kv) {
+    for (struct kv_node *curnode = kv->next; curnode != NULL;) {
+        struct kv_node *deadnode = curnode;
+        curnode = curnode->next;
+        free(deadnode->key);
+        free(deadnode->val);
+        free(deadnode);
+    }
+    free(kv->key);
+    free(kv->val);
+    free(kv);
+}

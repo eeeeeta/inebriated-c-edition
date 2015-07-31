@@ -32,16 +32,4 @@ extern struct varstr *varstr_cat(struct varstr *vs, wchar_t *str);
 extern struct varstr *varstr_ncat(struct varstr *vs, wchar_t *str, size_t count);
 extern struct varstr *varstr_pushc(struct varstr *vs, wchar_t c);
 extern wchar_t *varstr_pack(struct varstr *vs);
-
-/**
- * \brief Expandable variable-length UTF-8 input buffer.
- */
-struct utf8_buf {
-    char *str;
-    int used;
-    int size;
-};
-extern struct utf8_buf *u8b_init(void);
-extern struct utf8_buf *u8b_pushc(struct utf8_buf *vs, char c);
-extern wchar_t *u8b_pack(struct utf8_buf *vs);
 #endif

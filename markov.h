@@ -37,8 +37,8 @@ struct kv_node *search_for_ss(wchar_t *key);
 struct kv_node *store_kv(wchar_t *key, wchar_t *val, int ss);
 extern wchar_t *generate_sentence();
 
-extern int read_input(FILE *fp);
-extern bool read_data(wchar_t *text);
+extern int read_input(FILE *fp, bool is_sentence);
+extern bool read_data(wchar_t *text, bool is_sentence);
 
 extern int load(char *filename);
 extern bool save(char *filename);

@@ -183,7 +183,7 @@ static bool net_recv_sentence(int fd) {
         return false;
     }
     if (utf8_str != NULL) fwprintf(stderr, L"net_recv_sentence(): WARNING: likely failure of wcsrtombs()!\n");
-    if (!read_data(wsent)) {
+    if (!read_data(wsent, true)) {
         fwprintf(stderr, L"net_recv_sentence(): read_data() failed\n");
         net_send_msg(fd, MSG_SENTENCE_GENFAILED);
         return false;

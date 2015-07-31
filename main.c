@@ -46,8 +46,8 @@ static void gen_with_output(void) {
 }
 static void save_with_output(void) {
     wprintf(L"saving database...\n");
-    int retval = save(DB_FILENAME);
-    if (retval != 0) {
+    bool retval = save(DB_FILENAME);
+    if (retval != true) {
         wprintf(L"Database saving failed!\n");
         exit(EXIT_FAILURE);
     }
@@ -56,7 +56,7 @@ static void save_with_output(void) {
 }
 static void input_new_data(void) {
     wprintf(L"inputting new data, Control-D to stop\n");
-    while (read_input(stdin) == 0)
+    while (read_input(stdin, true) == 0)
         ;
     save_with_output();
 }
@@ -69,9 +69,16 @@ static void infile_with_output(void) {
         exit(EXIT_FAILURE);
     }
     wprintf(L"reading from file (can take some time)...\n");
-    while (read_input(fp) == 0)
+    while (read_input(fp, false) == 0)
         ;
     wprintf(L"read done!\n");
+    save_with_output();
+}
+static void floodgates(void) {
+    wprintf(L"opening the floodgates! paste as much data as you wish below (Ctrl-D to stop)\n");
+    while (read_input(stdin, false) == 0)
+        ;
+    wprintf(L"floodgates closed\n");
     save_with_output();
 }
 static void syntax_lecture(char *name) {
@@ -81,6 +88,7 @@ static void syntax_lecture(char *name) {
     fwprintf(stderr, L"\tgen: generate a sentence\n");
     fwprintf(stderr, L"\tinfile: load sentences from infile.txt or file specified by -f\n");
     fwprintf(stderr, L"\tnet: test networking on port 7070 or port specified by -p\n");
+    fwprintf(stderr, L"\tflood: data dump a bunch of incoherent sentences into the database\n");
     fwprintf(stderr, L"-d DBFILE: adjust database file\n");
     exit(EXIT_FAILURE);
 }
@@ -118,6 +126,9 @@ int main(int argc, char *argv[]) {
     }
     else if (strcmp("infile", action) == 0) {
         infile_with_output();
+    }
+    else if (strcmp("flood", action) == 0) {
+        floodgates();
     }
     else if (strcmp("net", action) == 0 && ret != 2) {
         wprintf(L"initialising networking test...");
