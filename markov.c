@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <time.h>
+#include <stdbool.h>
 #include "markov.h"
 
 /**

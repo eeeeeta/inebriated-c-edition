@@ -15,7 +15,12 @@ var cmds = {
     MSG_SENTENCE_GENFAILED: '\x05',
     MSG_SENTENCE_LEN: '\x06',
     MSG_SENTENCE_ACK: '\x07',
-    MSG_TERMINATE: '\x08'
+    MSG_TERMINATE: '\x08',
+    MSG_REQ_SEND_SENTENCE: '\x09',
+    MSG_SENDNOW: '\x10',
+    MSG_DB_SAVE: '\x11',
+    MSG_SAVED: '\x12',
+    MSG_DB_ERR: '\x13'
 };
 var sendCommand = function(command) {
     let b = new Buffer(1);
@@ -85,9 +90,13 @@ sock.on('data', function(buf) {
 sock.on('end', function() {
     console.log('connection closed');
 });
-
+/*
 setInterval(function() {
     if (!ready) return console.log('Not ready yet, skipping sentence request');
     console.log('Requesting sentence...');
     getSentence();
+}, 2000);*/
+setTimeout(function() {
+    console.log('REQ_SEND_SENTENCE');
+    sendCommand(cmds.REQ_SEND_SENTENCE);
 }, 2000);

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <wchar.h>
 #include <string.h>
+#include <stdbool.h>
 #include "markov.h"
 
 extern struct database *db_init(void) {

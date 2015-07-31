@@ -38,8 +38,12 @@ struct kv_node *store_kv(wchar_t *key, wchar_t *val, int ss);
 extern wchar_t *generate_sentence();
 
 extern int read_input(FILE *fp);
+extern bool read_data(wchar_t *text);
 
-int load(void);
-int save(void);
+extern int load(char *filename);
+extern bool save(char *filename);
+
+extern char *DB_FILENAME;
+extern char *NET_PORT;
 
 #endif

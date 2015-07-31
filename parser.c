@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <wchar.h>
 #include <wctype.h>
+#include <stdbool.h>
 #include "markov.h"
 
 /**
@@ -29,7 +30,7 @@ static signed int r2w(struct varstr *into, wchar_t *from) {
  * Loops through text and, calling r2w() on it, breaks it up into (and stores)
  * kv pairs.
  */
-extern void read_data(wchar_t *text) {
+extern bool read_data(wchar_t *text) {
     wchar_t *last;
     struct varstr *cur;
     signed int read_last = 0;
@@ -38,28 +39,28 @@ extern void read_data(wchar_t *text) {
         cur = varstr_init();
         if (cur == NULL) {
             perror("init varstr in read_data()");
-            return;
+            return false;
         }
         read_last = r2w(cur, text);
         if (last != NULL) {
             wchar_t *v;
             if ((v = varstr_pack(cur)) == NULL) {
                 perror("packing varstr in read_data()");
-                return;
+                return false;
             }
             store_kv(last, v, is_ss);
             is_ss = 1;
         }
         if ((last = varstr_pack(cur)) == NULL) {
             perror("packing varstr in read_data()");
-            return;
+            return false;
         }
         if (read_last < 0) {
             break;
         }
         text += read_last;
     }
-    return;
+    return true;
 }
 /**
  * Read a line of input from file pointer fp (pre-opened).
@@ -83,6 +84,6 @@ extern int read_input(FILE *fp) {
         perror("packing u8b in read_input()");
         return 2;
     }
-    read_data(str);
+    if (!read_data(str)) return 2;
     return (feof(fp) ? 1 : 0);
 }

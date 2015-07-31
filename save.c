@@ -5,21 +5,29 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <wchar.h>
+#include <stdbool.h>
+#include <pthread.h>
 #include "markov.h"
 
 
 static const wchar_t NEWKEY = L'\x11';
+static const int yes = 1;
 static const wchar_t NEWVAL = L'\x12';
 static const wchar_t SENTENCE_STARTER = L'\x13';
 static const wchar_t NEWLINE = L'\n';
-static const char *filename = "markov_keys.mkdb";
+static pthread_mutex_t db_lock;
+static bool pthreads_ready = false;
 
-int save(void) {
+static void *save_tfunc(void *filename) {
+    wprintf(L"save_tfunc(): database save queued, waiting for lock\n");
+    pthread_mutex_lock(&db_lock);
+    wprintf(L"save_tfunc(): saving database to '%s'\n", filename);
     FILE *fp;
     fp = fopen(filename, "w");
     if (fp == NULL) {
-        perror("save(): opening file");
-        return 1;
+        perror("save_tfunc(): opening file");
+        pthread_mutex_unlock(&db_lock);
+        return NULL;
     }
     struct kv_node *curnode;
     int i = 0;
@@ -42,15 +50,43 @@ int save(void) {
         fwrite(&NEWLINE, sizeof(wchar_t), 1, fp);
     }
     if (ferror(fp)) {
-        perror("save(): writing data");
-        return 1;
+        perror("save_tfunc(): writing data");
+        pthread_mutex_unlock(&db_lock);
+        return NULL;
     }
-    return 0;
+    wprintf(L"save_tfunc(): database save successful\n");
+    pthread_mutex_unlock(&db_lock);
+    return (int *) &yes;
+}
+extern bool save(char *filename) {
+    if (!pthreads_ready) {
+    if (pthread_mutex_init(&db_lock, NULL) != 0) {
+        perror("save(): pthread_mutex_init failed");
+        return false;
+    }
+    pthreads_ready = true;
+    }
+    pthread_t thread;
+    void *retval;
+    if ((errno = pthread_create(&thread, NULL, &save_tfunc, filename)) != 0) {
+        perror("save(): pthread_create failed");
+        return false;
+    }
+    if ((errno = pthread_join(thread, &retval)) != 0) {
+        perror("save(): pthread_join failed");
+        return false;
+    }
+    if (retval != &yes) {
+        fwprintf(stderr, L"save(): thread did not return success\n");
+        return false;
+    }
+    return true;
+
 }
 /**
  * Load the database. Returns 0 on success, 1 on error, and 2 if you don't have one.
  */
-int load(void) {
+extern int load(char *filename) {
     FILE *fp;
     fp = fopen(filename, "r");
     if (fp == NULL) {
