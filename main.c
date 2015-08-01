@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <locale.h>
 #include <wchar.h>
 #include <wctype.h>
 #include <stdbool.h>
@@ -16,17 +17,15 @@ char *DB_FILENAME = "markov_keys.mkdb";
 char *NET_PORT = "7070";
 static char *infile = "infile.txt";
 static int load_with_output(void) {
-    wprintf(L"loading database...\n");
     int retval = load(DB_FILENAME);
     if (retval == 2) {
-        wprintf(L"No database found.\n");
+        wprintf(L"[!] No database found.\n");
         return retval;
     }
     if (retval != 0) {
-        wprintf(L"Failed to load database!\n");
+        wprintf(L"[!] Failed to load database!\n");
         exit(EXIT_FAILURE);
     }
-    wprintf(L"database ready\n");
     return 0;
 }
 static void gen_with_output(void) {
@@ -35,7 +34,7 @@ static void gen_with_output(void) {
         wchar_t *sent = generate_sentence();
         if (sent == NULL) {
             perror("generate_sentence()");
-            wprintf(L"Sentence generation failed!\n");
+            wprintf(L"[!] Sentence generation failed!\n");
             exit(EXIT_FAILURE);
         }
         wprintf(L"Sentence: \"%ls\"\n", sent);
@@ -45,10 +44,9 @@ static void gen_with_output(void) {
     exit(EXIT_SUCCESS);
 }
 static void save_with_output(void) {
-    wprintf(L"saving database...\n");
     bool retval = save(DB_FILENAME);
     if (retval != true) {
-        wprintf(L"Database saving failed!\n");
+        wprintf(L"[!] Database saving failed!\n");
         exit(EXIT_FAILURE);
     }
     wprintf(L"database saved\n");
@@ -82,7 +80,7 @@ static void floodgates(void) {
     save_with_output();
 }
 static void syntax_lecture(char *name) {
-    fwprintf(stderr, L"Syntax: %s [-d dbfile] [-p port] [-f infile] action\n", name);
+    fwprintf(stderr, L"Syntax: %s [-d dbfile] [-p port] [-f infile] [-l locale] action\n", name);
     fwprintf(stderr, L"action: one of the following:\n");
     fwprintf(stderr, L"\tinput: input new sentences from terminal\n");
     fwprintf(stderr, L"\tgen: generate a sentence\n");
@@ -90,12 +88,14 @@ static void syntax_lecture(char *name) {
     fwprintf(stderr, L"\tnet: test networking on port 7070 or port specified by -p\n");
     fwprintf(stderr, L"\tflood: data dump a bunch of incoherent sentences into the database\n");
     fwprintf(stderr, L"-d DBFILE: adjust database file\n");
+    fwprintf(stderr, L"-l LOCALE: adjust locale used for character encoding\n");
     exit(EXIT_FAILURE);
 }
 int main(int argc, char *argv[]) {
     int opt;
     wprintf(L"inebriated, C version, by eeeeeta\n");
-    while ((opt = getopt(argc, argv, "d:f:p:")) != -1) {
+    char *locale_ctype = getenv("LC_CTYPE");
+    while ((opt = getopt(argc, argv, "d:f:p:l:")) != -1) {
         switch (opt) {
             case 'd':
                 DB_FILENAME = optarg;
@@ -106,10 +106,21 @@ int main(int argc, char *argv[]) {
             case 'f':
                 infile = optarg;
                 break;
+            case 'l':
+                locale_ctype = optarg;
+                break;
             default:
                 syntax_lecture(argv[0]);
                 break;
         }
+    }
+    if (locale_ctype == NULL) {
+        fwprintf(stderr, L"[!] Could not find a valid LC_CTYPE value. Fix your environment, or use -l LOCALE to specify a locale.");
+        exit(EXIT_FAILURE);
+    }
+    if (setlocale(LC_CTYPE, locale_ctype) == NULL) {
+        perror("error setting locale");
+        exit(EXIT_FAILURE);
     }
     markov_database = db_init();
     srand(time(0));
@@ -131,14 +142,12 @@ int main(int argc, char *argv[]) {
         floodgates();
     }
     else if (strcmp("net", action) == 0 && ret != 2) {
-        wprintf(L"initialising networking test...");
         int fd;
         fd = net_init();
         if (fd == -1) {
-            wprintf(L"failed\n");
+            wprintf(L"[!] Failed to initialise networking test!\n");
             exit(EXIT_FAILURE);
         }
-        wprintf(L"done!\n", fd);
         wprintf(L"Listening for connections (port %s) - database: %s\n", NET_PORT, DB_FILENAME);
         net_listen(fd);
     }

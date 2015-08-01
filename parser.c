@@ -77,7 +77,7 @@ extern int read_input(FILE *fp, bool is_sentence) {
         perror("init varstr in read_input()");
         return 2;
     }
-    for (wchar_t c = fgetwc(fp); c != EOF && c != L'\n'; c = fgetwc(fp)) {
+    for (wchar_t c = fgetwc(fp); c != WEOF && c != L'\n'; c = fgetwc(fp)) {
         if (varstr_pushc(buf, c) == NULL) break;
     }
     if (ferror(fp)) {
