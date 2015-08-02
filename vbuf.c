@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "markov.h"
+#include "vbuf.h"
 
 extern struct database *db_init(void) {
     struct database *db = malloc(sizeof(struct database));

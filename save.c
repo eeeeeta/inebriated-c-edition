@@ -49,6 +49,7 @@ static void *save_tfunc(void *filename) {
         }
         fputwc(NEWLINE, fp);
     }
+    fflush(fp);
     if (ferror(fp)) {
         perror("save_tfunc(): writing data");
         pthread_mutex_unlock(&db_lock);

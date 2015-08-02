@@ -20,7 +20,14 @@
 #include "net.h"
 #include "proto.h"
 
-
+/*
+ * Terminates a connection due to failure.
+ */
+extern void *net_fail(int fd) {
+    close(fd);
+    wprintf(L"net_fail(): closing fd %d due to errors\n", fd);
+    return NULL;
+}
 /**
  * Internal function to get an inet address from a struct sockaddr.
  */
@@ -31,6 +38,68 @@ extern void *get_in_addr(struct sockaddr *sa) {
     return &(((struct sockaddr_in6 *) sa)->sin6_addr);
 }
 
+extern void *net_handler_tfunc(void *fda) {
+    int *fd = (int *) fda;
+    char msg;
+    if (!net_send_msg(*fd, MSG_OHAI)) return net_fail(*fd);
+    if (net_recv_msg(*fd) != MSG_PONG) return net_fail(*fd);
+    wprintf(L"net_handler_tfunc(): handshake completed (fd %d)\n", *fd);
+    while (1) {
+        /* main thread loop */
+        if (!net_send_msg(*fd, MSG_SEND_CMD)) break;
+        if ((int) (msg = net_recv_msg_or_ping(*fd)) >= (int) INT_FAIL) {
+            fwprintf(stderr, L"net_handler_tfunc(): error receiving next command (fd %d)\n", *fd);
+            break;
+        }
+        if (msg == MSG_GET_SENTENCE) {
+            const wchar_t *sentence = generate_sentence();
+            if (sentence == NULL) {
+                perror("net_handler_tfunc(): generate_sentence failed");
+                net_send_msg(*fd, MSG_SENTENCE_GENFAILED);
+                continue;
+            }
+            if (!net_send_sentence(*fd, sentence)) {
+                msg = INT_FAIL;
+                break;
+            }
+        }
+        else if (msg == MSG_SENTENCE_LEN) {
+            wchar_t *s = net_recv_sentence(*fd);
+            if (s == NULL) {
+                msg = INT_FAIL;
+                break;
+            }
+            if (!read_data(s, true)) {
+                fwprintf(stderr, L"net_handler_tfunc(): read_data failed");
+                continue;
+            }
+        }
+        else if (msg == MSG_TERMINATE) break;
+        else if (msg == MSG_OHAI) {
+            if (!net_send_msg(*fd, MSG_PONG)) {
+                fwprintf(stderr, L"net_handler_tfunc(): we failed to return ping (fd %d)\n", *fd);
+                msg = INT_FAIL;
+                break;
+            }
+        }
+        else if (msg == MSG_DB_SAVE) {
+            if (!save(DB_FILENAME)) net_send_msg(*fd, MSG_SAVE_ERR);
+            else net_send_msg(*fd, MSG_SAVED);
+        }
+        else if (msg == MSG_PONG) continue;
+        else {
+            fwprintf(stderr, L"net_handler_tfunc(): got unknown message type (%d) from fd %d\n", msg, *fd);
+        }
+    }
+    if (msg == INT_FAIL) return net_fail(*fd);
+    else if (msg == INT_TIMEOUT) return net_fail(*fd);
+    else if (msg == INT_CLOSED) return NULL;
+    else {
+        close(*fd);
+        wprintf(L"net_handler_tfunc(): fd %d terminated\n", *fd);
+        return NULL;
+    }
+}
 extern int net_init() {
     struct addrinfo hints;
     struct addrinfo *info;

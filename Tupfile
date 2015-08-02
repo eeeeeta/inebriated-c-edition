@@ -1,2 +1,3 @@
-: foreach main.c net.c save.c parser.c vbuf.c markov.c proto.c |> gcc -g -Wall -c %f -o %o |> %B.o
-: *.o |> gcc -g %f -o %o -lpthread |> markov
+: foreach main.c net.c save.c parser.c vbuf.c markov.c proto.c client.c |> gcc -g -Wall -c %f -o %o |> %B.o
+: main.o net.o save.o parser.o vbuf.o markov.o proto.o |> gcc -g %f -o %o -lpthread |> markov
+: client.o proto.o vbuf.o |> gcc -g %f -o %o -lpthread |> client

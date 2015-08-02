@@ -1,5 +1,6 @@
 *.swp
 markov
+client
 *.o
 docs/*
 .tup/
