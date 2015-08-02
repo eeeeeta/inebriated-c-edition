@@ -68,7 +68,7 @@ extern size_t net_recv_timed(int fd, void *buf, size_t size, int timeout) {
         if (brcv == 0) {
             fwprintf(stderr, L"net_recv_timed(): connection closed unexpectedly\n");
             net_fail(fd);
-            return -1;
+            return -3;
         }
         else if (brcv == -1) {
             perror("net_recv_timed(): recv failed");
@@ -92,6 +92,7 @@ extern char net_recv_msg_timed(int fd, int tmout) {
         return INT_FAIL;
     }
     int ret = net_recv_timed(fd, msg, sizeof(char), tmout);
+    if (ret == -3) return INT_CLOSED;
     if (ret == -2) return INT_TIMEOUT;
     if (ret == -1) return INT_FAIL;
     if (ret != sizeof(char)) {

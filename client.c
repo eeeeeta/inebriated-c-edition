@@ -37,7 +37,10 @@ static void *recv_tfunc(void *fdp) {
                 fwprintf(stderr, L"failed to return ping\n");
                 net_fail(socket_fd);
             }
-            wprintf(L"ping -> pong!\n");
+            wprintf(L"PONG! replied to server's ping\n");
+        }
+        else if (msg == MSG_PONG) {
+            wprintf(L"server is still there! :D\n");
         }
         else if (msg == MSG_SENTENCE_LEN) {
             wchar_t *sent = net_recv_sentence(socket_fd);
@@ -60,17 +63,48 @@ static void *recv_tfunc(void *fdp) {
     net_fail(socket_fd);
     return NULL;
 }
+static void syntax_lecture(char *name) {
+    fwprintf(stderr, L"Syntax: %s [-h host] [-p port] [-l locale]\n", name);
+    fwprintf(stderr, L"-h HOST: (default localhost) adjust host\n");
+    fwprintf(stderr, L"-p PORT: (default 7070) adjust port\n");
+    fwprintf(stderr, L"-l LOCALE: adjust locale used for character encoding\n");
+    exit(EXIT_FAILURE);
+}
 int main(int argc, char *argv[]) {
-    setlocale(LC_CTYPE, "");
+    int opt;
+    char *port = "7070";
+    char *host = "localhost";
+    wprintf(L"inebriated, C version, by eeeeeta - reference client\n");
+    char *locale_ctype = "";
+    while ((opt = getopt(argc, argv, "h:p:l:")) != -1) {
+        switch (opt) {
+            case 'l':
+                locale_ctype = optarg;
+                break;
+            case 'h':
+                host = optarg;
+                break;
+            case 'p':
+                port = optarg;
+                break;
+            default:
+                syntax_lecture(argv[0]);
+                break;
+        }
+    }
+    if (setlocale(LC_CTYPE, locale_ctype) == NULL) {
+        perror("error setting locale");
+        exit(EXIT_FAILURE);
+    }
+    wprintf(L"connecting to %s port %s...\n", host, port);
     struct addrinfo hints;
     struct addrinfo *info;
     int status, socket_fd;
-    int yes = 1;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = 0;
-    if ((status = getaddrinfo("localhost", "7070", &hints, &info)) != 0) {
+    if ((status = getaddrinfo(host, port, &hints, &info)) != 0) {
         fwprintf(stderr, L"getaddrinfo() failed: %s\n", gai_strerror(status));
         if (status == EAI_SYSTEM) {
             perror("getaddrinfo() failed due to system error");
@@ -105,7 +139,7 @@ int main(int argc, char *argv[]) {
     pthread_t recv_thread;
     pthread_create(&recv_thread, NULL, &recv_tfunc, &socket_fd);
     wchar_t act;
-    wprintf(L"commands: (g) get sentence (t) terminate (e) send sentence (s) queue db save\n");
+    wprintf(L"commands: (g) get sentence (t) terminate (e) send sentence (s) queue db save (p) ping\n");
     wprintf(L"type [command]<Enter> to execute\n");
     while (1) {
         act = fgetwc(stdin);
@@ -113,6 +147,13 @@ int main(int argc, char *argv[]) {
         switch (act) {
             case L'g':
                 if (!net_send_msg(socket_fd, MSG_GET_SENTENCE)) {
+                    wprintf(L"failed to send command\n");
+                    net_fail(socket_fd);
+                }
+                wprintf(L"command sent\n");
+                break;
+            case L'p':
+                if (!net_send_msg(socket_fd, MSG_OHAI)) {
                     wprintf(L"failed to send command\n");
                     net_fail(socket_fd);
                 }
