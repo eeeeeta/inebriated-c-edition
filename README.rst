@@ -13,27 +13,29 @@ This is a small toy project to implement a `Markov chains`_-based chatbot in C.
 It takes inspiration from a version of this idea I previously made in `Node.js`_ and connected
 to an IRC network - it soon produced hilarious results.
 
+I still don't get it.
+---------------------
+
+STUPID SENTENCES! IN C! IN YOUR TERMINAL!!!111!!ONE!!111!
+
 How?
 ----
-
-The entire principle of this chatbot is to generate *plausibly hilarious sentences*, in that they
-contain some aspect of grammatical correctness while still being nonsense. This is achieved in the following
-fashion:
 
 Input sentence::
 
    "I like eating dogs and playing with cats".
 
-This is then chopped up into two-word key-value pairs::
+This is then chopped up into two-word key-value pairs (which btw required A WHOLE DAMN FUNCTION to do in C, instead of .split() or something)::
 
    "I like" -> "eating dogs" -> "and playing" -> "with cats".
 
-These pairs are stored in a database.
+These pairs are stored in a database (the patented /dev/null Storage Device (tm)).
+
 2nd input sentence::
 
  "I like making trains and playing with them"
 
-Now, the database looks like this::
+Now, the database looks like this (except, knowing my coding, it probably doesn't)::
 
             >"eating dogs" ---|                 >"with them"
   [I like] -|                 |> "and playing" -|
@@ -41,6 +43,13 @@ Now, the database looks like this::
 
 To make a sentence, start at one of the 'sentence starters' (eg. "I like") and randomly select values. As more
 and more sentences are added to the database, more funny opportunities arise!
+
+(but of course, the values aren't just *selected*. they have a whole ALGOTHINGY go through them first!)
+
+Your examples are weird.
+------------------------
+
+Go eat some chunky bacon.
 
 Why?
 ----
@@ -64,22 +73,39 @@ IRC chat logs), it generated the following gems:
 How can I play with it?
 -----------------------
 
-First, install `tup`_. Then::
+Step I: install `tup`_.
 
-  $ tup init
-  $ tup upd
-  $ touch markov_keys.mkdb
-  $ ./markov {infile, gen, input}
+Step II::
 
-It's in beta. Be gentle. The *infile* option will read lines of sentences from a file named *infile.txt* in the current
-directory, and the *input* option will let you do input sentences on the command line.
+  $ tup
+  $ ./markov
 
-After that, use the *gen* command to try and generate a sentence.
+Step III: Listen to the lecture it gives you about how to use it. (i'll have you know, i spent a whole *minute* writing that!)
+
+Step IV: ???
+
+Step V: Profit!
+
+It said something about networking.
+-----------------------------------
+
+There's an (alpha) networking bit that will eventually replace everything else. For now, though, it's
+just fun to play with::
+
+  $ ./markov [-p PORT] net
+
+  [in another terminal]
+
+  $ ./client [-h HOST] [-p PORT]
+
+
+Bam. Crappy networking support, soon to be ported to a webpage near you.
 
 Can I steal it?
 ---------------
 
 You can do what you want with the code - it's `unlicensed`_. (I would like some attribution, though!)
+
 
 .. _`markov chains`: "https://en.wikipedia.org/wiki/Markov_chain"
 .. _`node.js`: "http://nodejs.org"
