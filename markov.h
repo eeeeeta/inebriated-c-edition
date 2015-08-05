@@ -2,26 +2,20 @@
 #define _MARKOV
 #include "vbuf.h"
 /**
- * \brief Key-value node.
+ * \brief Database node
  */
 struct kv_node {
-    struct kv_node *next; /**< next kv_node for this key */
+    struct kv_node *next; /**< linked list: next kv_node for this key */
     wchar_t *key; /**< key */
-    wchar_t *val; /**< value */
-    int score; /**< how many values this key has */
+    unsigned long *hash; /**< pointer to key hash */
+    struct kv_node *vptr; /**< pointer to value */
+#ifdef I_HAVE_A_VERY_BIG_NODE
+    int16_t score; /**< (if origin node) amount of nodes in linked list, (if not) -1 */
+#else
+    int8_t score;
+#endif
 };
-
-/**
- * \brief Value-next node.
- *
- * Holds the value, and a pointer to the kv_node which
- * has this value as its key.
- */
-struct vn_node {
-    struct kv_node *next; /**< which kv_node this val points to */
-    wchar_t *val; /**< value */
-    int score; /** how many values the kv_node this val points to has */
-};
+typedef struct kv_node DBN;
 
 /** \brief Database structure */
 struct database {
@@ -34,7 +28,7 @@ struct database *markov_database; /**< global database object */
 
 struct kv_node *search_for_key(wchar_t *key);
 struct kv_node *search_for_ss(wchar_t *key);
-struct kv_node *store_kv(wchar_t *key, wchar_t *val, int ss);
+extern DBN *store_kv(wchar_t *k, wchar_t *v, bool ss);
 extern wchar_t *generate_sentence();
 
 extern int read_input(FILE *fp, bool is_sentence);
@@ -46,4 +40,7 @@ extern bool save(char *filename);
 extern char *DB_FILENAME;
 extern char *NET_PORT;
 
+extern void kv_free(struct kv_node *kv);
+extern void kv_free_DPA(DPA *dpa);
+extern void vn_free_DPA(DPA *dpa);
 #endif

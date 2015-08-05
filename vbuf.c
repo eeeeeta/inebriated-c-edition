@@ -19,7 +19,7 @@ extern struct database *db_init(void) {
  * Returns a pointer to said object, or NULL if there was an error.
  */
 extern DPA *DPA_init(void) {
-    DPA *dpa = malloc(sizeof(dpa));
+    DPA *dpa = malloc(sizeof(DPA));
     if (dpa == NULL) return NULL;
     dpa->keys = calloc(DPA_START_SIZE, sizeof(void *));
     if (dpa->keys == NULL) return NULL;
@@ -48,14 +48,14 @@ extern bool *DPA_rem(DPA *dpa, void *obj) {
  * Stores obj in dpa. Returns a pointer to obj if successful, or NULL if there was an error.
  */
 extern void *DPA_store(DPA *dpa, void *obj) {
-    if ((dpa->size - dpa->used) <= 1) {
+    if ((dpa->size - dpa->used) < 2) {
         // allocate more space
         void **ptr = realloc(dpa->keys, sizeof(void *) * (dpa->size + DPA_REFILL_SIZE));
         if (ptr == NULL) return NULL;
         dpa->keys = ptr;
         dpa->size += DPA_REFILL_SIZE;
     }
-    (dpa->keys)[(dpa->used)++] = obj;
+    (dpa->keys)[(dpa->used++)] = obj;
     return obj;
 }
 
@@ -122,10 +122,19 @@ extern struct varstr *varstr_pushc(struct varstr *vs, wchar_t c) {
 /**
  * Free unused memory in a variable string & convert it to just a regular string.
  * Returns pointer to regular string, NULL on failure.
+ *
+ * Remember to free() the string!
  */
 extern wchar_t *varstr_pack(struct varstr *vs) {
-    wchar_t *ptr = realloc(vs->str, sizeof(wchar_t) * (vs->used + 1));
+    wchar_t *ptr = malloc(sizeof(wchar_t) * (vs->used + 1));
     if (ptr == NULL) return NULL;
+    wcscpy(ptr, (const wchar_t *) vs->str);
+    free(vs->str);
+    free(vs);
     return ptr;
 };
 
+extern void varstr_free(struct varstr *vs) {
+    free(vs->str);
+    free(vs);
+};

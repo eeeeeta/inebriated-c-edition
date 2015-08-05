@@ -16,6 +16,7 @@
 char *DB_FILENAME = "markov_keys.mkdb";
 char *NET_PORT = "7070";
 static char *infile = "infile.txt";
+/*
 static int load_with_output(void) {
     int retval = load(DB_FILENAME);
     if (retval == 2) {
@@ -27,7 +28,7 @@ static int load_with_output(void) {
         exit(EXIT_FAILURE);
     }
     return 0;
-}
+}*/
 static void gen_with_output(void) {
     wchar_t c = L'y';
     while (c != EOF) {
@@ -42,7 +43,7 @@ static void gen_with_output(void) {
         c = fgetc(stdin);
     }
     exit(EXIT_SUCCESS);
-}
+}/*
 static void save_with_output(void) {
     bool retval = save(DB_FILENAME);
     if (retval != true) {
@@ -51,12 +52,12 @@ static void save_with_output(void) {
     }
     wprintf(L"database saved\n");
     exit(EXIT_SUCCESS);
-}
+}*/
 static void input_new_data(void) {
     wprintf(L"inputting new data, Control-D to stop\n");
     while (read_input(stdin, true) == 0)
         ;
-    save_with_output();
+    //save_with_output();
 }
 static void infile_with_output(void) {
     wprintf(L"inputting new data from file '%s'\n", infile);
@@ -70,15 +71,21 @@ static void infile_with_output(void) {
     while (read_input(fp, false) == 0)
         ;
     wprintf(L"read done!\n");
-    save_with_output();
+    //save_with_output();
 }
 static void floodgates(void) {
     wprintf(L"opening the floodgates! paste as much data as you wish below (Ctrl-D to stop)\n");
     while (read_input(stdin, false) == 0)
         ;
     wprintf(L"floodgates closed\n");
-    save_with_output();
-}
+    //save_with_output();
+}/*
+static void cleanup(void) {
+    kv_free_DPA(markov_database->objs);
+    DPA_free(markov_database->objs);
+    DPA_free(markov_database->sses);
+    free(markov_database);
+}*/
 static void syntax_lecture(char *name) {
     fwprintf(stderr, L"Syntax: %s [-d dbfile] [-p port] [-f infile] [-l locale] action\n", name);
     fwprintf(stderr, L"action: one of the following:\n");
@@ -92,7 +99,18 @@ static void syntax_lecture(char *name) {
     exit(EXIT_FAILURE);
 }
 int main(int argc, char *argv[]) {
+    markov_database = db_init();
+    srand(time(0));
+    wprintf(L"inserting test strings...");
+    store_kv(L"a", L"b", true);
+    store_kv(L"b", L"c", false);
+    store_kv(L"b", L"bollocks", true);
+    store_kv(L"c", L"bollocks", false);
+    wprintf(L"done\n");
+    gen_with_output();
+    exit(0);/*
     int opt;
+    atexit(&cleanup);
     wprintf(L"inebriated, C version, by eeeeeta\n");
     char *locale_ctype = getenv("LC_CTYPE");
     while ((opt = getopt(argc, argv, "d:f:p:l:")) != -1) {
@@ -154,5 +172,5 @@ int main(int argc, char *argv[]) {
     else {
         fwprintf(stderr, L"[!] Either you didn't specify a valid action, or you tried to use the database without having one.\n");
         syntax_lecture(argv[0]);
-    }
+    }*/
 }

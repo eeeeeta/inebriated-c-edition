@@ -25,6 +25,7 @@ static signed int r2w(struct varstr *into, wchar_t *from) {
             return -1;
         }
     }
+    varstr_pushc(into, '\0');
     return (c == L'\0' ? (i - i*2) : i);
 }
 /**
@@ -34,10 +35,10 @@ static signed int r2w(struct varstr *into, wchar_t *from) {
  * Set is_sentence according to whether the text should be interpreted as a sentence or not.
  */
 extern bool read_data(wchar_t *text, bool is_sentence) {
-    wchar_t *last;
-    struct varstr *cur;
+    wchar_t *last = NULL;
+    struct varstr *cur = NULL;
     signed int read_last = 0;
-    int is_ss = (is_sentence ? 0 : 1);
+    bool is_ss = (is_sentence ? true : false);
     for (last = NULL;;) {
         cur = varstr_init();
         if (cur == NULL) {
@@ -47,14 +48,14 @@ extern bool read_data(wchar_t *text, bool is_sentence) {
         read_last = r2w(cur, text);
         if (last != NULL) {
             wchar_t *v;
-            if ((v = varstr_pack(cur)) == NULL) {
+            if ((last = v = varstr_pack(cur)) == NULL) {
                 perror("packing varstr in read_data()");
                 return false;
             }
             store_kv(last, v, is_ss);
-            is_ss = 1;
+            is_ss = false;
         }
-        if ((last = varstr_pack(cur)) == NULL) {
+        if (last == NULL && (last = varstr_pack(cur)) == NULL) {
             perror("packing varstr in read_data()");
             return false;
         }
@@ -90,5 +91,6 @@ extern int read_input(FILE *fp, bool is_sentence) {
         return 2;
     }
     if (!read_data(str, is_sentence)) return 2;
+    free(str);
     return (feof(fp) ? 1 : 0);
 }

@@ -97,69 +97,75 @@ extern int load(char *filename) {
         perror("load(): opening file");
         return 1;
     }
-    struct varstr *key = varstr_init();
-    struct varstr *val = varstr_init();
+    struct varstr *key = NULL;
+    wchar_t *lk = NULL;
+    struct varstr *val = NULL;
     int sentence_starter = 1;
     int mode = 2; /* 0 = key, 1 = val, 2 = wtf? */
-    if (key == NULL || val == NULL) {
-        perror("load(): failed to initialise varstrs");
-        return 1;
-    }
     for (wchar_t c = fgetwc(fp); c != EOF; c = fgetwc(fp)) {
         if (c == L'\0') {
-            fwprintf(stderr, L"load(): Your database has wide-character encoding issues.\n");
+            fwprintf(stderr, L"load(): Error: Your database has encoding issues. (this shouldn't happen)\n");
             return 1;
         }
         if (c == NEWKEY) {
-            free(key);
             key = varstr_init();
+            if (key == NULL) {
+                perror("load(): varstr_init failed");
+                return 1;
+            }
             mode = 0;
             sentence_starter = 1;
         }
         else if (c == NEWVAL) {
             if (mode == 1) {
-                wchar_t *k = varstr_pack(key);
+                wchar_t *k = NULL;
+                if (key == NULL) k = lk;
+                else k = lk = varstr_pack(key);
                 wchar_t *v = varstr_pack(val);
                 if (k == NULL || v == NULL) {
                     perror("load(): failed to pack varstrs");
                     return 1;
                 }
                 store_kv(k, v, sentence_starter);
+                val = NULL;
             }
-            free(val);
             val = varstr_init();
+            if (val == NULL) {
+                perror("load(): varstr_init failed");
+                return 1;
+            }
             mode = 1;
         }
         else if (c == NEWLINE) {
-            wchar_t *k = varstr_pack(key);
+            wchar_t *k = NULL;
+            if (lk == NULL) k = varstr_pack(key);
+            else k = lk;
             wchar_t *v = varstr_pack(val);
+            lk = NULL;
             if (k == NULL || v == NULL) {
                 perror("load(): failed to pack varstrs");
                 return 1;
             }
+            key = NULL;
+            val = NULL;
             store_kv(k, v, sentence_starter);
             mode = 2;
         }
         else if (c == SENTENCE_STARTER && mode == 0) {
             sentence_starter = 0;
         }
-        else if (mode == 2) {
-            errno = EINVAL;
-            perror("load(): file corrupted");
-        }
-        else if (mode == 1) {
+        else if (mode == 1 && key != NULL) {
             varstr_pushc(val, c);
         }
-        else if (mode == 0) {
+        else if (mode == 0 && key != NULL) {
             varstr_pushc(key, c);
         }
         else {
-            fprintf(stderr, "EVERYTHING IS BROKEN - this should NEVER happen");
-            return 999;
+            errno = EINVAL;
+            perror("load(): file corrupted");
+            return 1;
         }
     }
-    free(key);
-    free(val);
     return 0;
 }
 

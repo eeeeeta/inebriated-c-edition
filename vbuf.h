@@ -16,6 +16,8 @@ typedef struct {
 
 extern DPA *DPA_init(void);
 extern void *DPA_store(DPA *dpa, void *obj);
+extern bool *DPA_rem(DPA *dpa, void *obj);
+extern void DPA_free(DPA *dpa);
 
 
 /**
@@ -32,4 +34,5 @@ extern struct varstr *varstr_cat(struct varstr *vs, wchar_t *str);
 extern struct varstr *varstr_ncat(struct varstr *vs, wchar_t *str, size_t count);
 extern struct varstr *varstr_pushc(struct varstr *vs, wchar_t c);
 extern wchar_t *varstr_pack(struct varstr *vs);
+extern void varstr_free(struct varstr *vs);
 #endif
