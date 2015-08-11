@@ -9,7 +9,6 @@
 #include <pthread.h>
 #include "markov.h"
 
-
 static const wchar_t NEWKEY = L'\x11';
 static const int yes = 1;
 static const wchar_t NEWVAL = L'\x12';
@@ -29,22 +28,24 @@ static void *save_tfunc(void *filename) {
         pthread_mutex_unlock(&db_lock);
         return NULL;
     }
-    struct kv_node *curnode;
+    DBN *curnode;
     int i = 0;
     for (curnode = markov_database->objs->keys[i]; i < markov_database->objs->used; curnode = markov_database->objs->keys[++i]) {
+        if (curnode->vptr == NULL) continue;
         fputwc(NEWKEY, fp);
-        if (search_for_ss(curnode->key) == curnode) {
+        if (DBN_getss(curnode->key) == curnode) {
             fputwc(SENTENCE_STARTER, fp);
         }
         fputws(curnode->key, fp);
         fputwc(NEWVAL, fp);
-        fputws(curnode->val, fp);
+        fputws(curnode->vptr->key, fp);
         if (curnode->next != NULL) {
-            struct kv_node *subnode = NULL;
+            DBN *subnode = NULL;
             subnode = curnode->next;
             for (; subnode != NULL; subnode = subnode->next) {
+                if (subnode->vptr == NULL) continue;
                 fputwc(NEWVAL, fp);
-                fputws(subnode->val, fp);
+                fputws(subnode->vptr->key, fp);
             }
         }
         fputwc(NEWLINE, fp);
@@ -82,9 +83,61 @@ extern bool save(char *filename) {
         return false;
     }
     return true;
-
 }
 /**
+ * Read one key.
+ * Returns 0 if not starter, 1 if starter, -1 if internal error, -2 if corrupt, -3 on EOF
+ */
+static signed int rkey(FILE *fp, struct varstr *into) {
+    int starter = 0;
+    bool got_start_indic = false;
+    wchar_t c = '\0';
+    while ((c = fgetwc(fp)) != WEOF) {
+        if (!got_start_indic && c == NEWKEY) {
+            got_start_indic = true;
+            continue;
+        }
+        else if (!got_start_indic) return -2; /* one of the most inelegant solutions ever! */
+        if (c == SENTENCE_STARTER) {
+            starter = 1;
+            continue;
+        }
+        if (c == NEWKEY) return -2;
+        if (c == NEWVAL) {
+            ungetwc(NEWVAL, fp);
+            return starter;
+        }
+        if (c == '\0') return -2;
+        if (c == NEWLINE) return -2;
+        if (varstr_pushc(into, c) == NULL) return -1;
+    };
+    return -3;
+}
+/**
+ * Read one value.
+ * Returns 0 on success, 1 if there is another value, -1 if internal error, -2 if corrupt, -3 on EOF
+ */
+static signed int rval(FILE *fp, struct varstr *into) {
+    wchar_t c = '\0';
+    bool got_start_indic = false;
+    while ((c = fgetwc(fp)) != WEOF) {
+        if (!got_start_indic && c == NEWVAL) {
+            got_start_indic = true;
+            continue;
+        }
+        else if (!got_start_indic) return -2;
+        if (c == SENTENCE_STARTER) return -2;
+        if (c == NEWKEY) return -2;
+        if (c == NEWVAL) {
+            ungetwc(NEWVAL, fp);
+            return 1;
+        }
+        if (c == '\0') return -2;
+        if (c == NEWLINE) return 0;
+        if (varstr_pushc(into, c) == NULL) return -1;
+    };
+    return -3;
+}/**
  * Load the database. Returns 0 on success, 1 on error, and 2 if you don't have one.
  */
 extern int load(char *filename) {
@@ -97,75 +150,52 @@ extern int load(char *filename) {
         perror("load(): opening file");
         return 1;
     }
-    struct varstr *key = NULL;
-    wchar_t *lk = NULL;
-    struct varstr *val = NULL;
-    int sentence_starter = 1;
-    int mode = 2; /* 0 = key, 1 = val, 2 = wtf? */
-    for (wchar_t c = fgetwc(fp); c != EOF; c = fgetwc(fp)) {
-        if (c == L'\0') {
-            fwprintf(stderr, L"load(): Error: Your database has encoding issues. (this shouldn't happen)\n");
+    struct varstr *key = NULL, *val = NULL;
+    wchar_t *k = NULL, *v = NULL;
+    signed int retval = -1;
+    bool valonly = false;
+    signed int is_ss = -1;
+    do {
+        key = varstr_init();
+        val = varstr_init();
+        if (key == NULL || val == NULL) {
+            perror("load(): varstr_init failed");
             return 1;
         }
-        if (c == NEWKEY) {
-            key = varstr_init();
-            if (key == NULL) {
-                perror("load(): varstr_init failed");
+        valonly = false;
+        is_ss = rkey(fp, key);
+newval: if (is_ss >= 0) retval = rval(fp, val);
+        if (is_ss < 0 || retval < 0) {
+            if (is_ss != 0) retval = is_ss;
+            if (retval == -2) {
+                fwprintf(stderr, L"load(): database corrupted\n");
                 return 1;
             }
-            mode = 0;
-            sentence_starter = 1;
-        }
-        else if (c == NEWVAL) {
-            if (mode == 1) {
-                wchar_t *k = NULL;
-                if (key == NULL) k = lk;
-                else k = lk = varstr_pack(key);
-                wchar_t *v = varstr_pack(val);
-                if (k == NULL || v == NULL) {
-                    perror("load(): failed to pack varstrs");
+            if (retval == -3) {
+                if (ferror(fp)) {
+                    perror("load(): error reading file");
                     return 1;
                 }
-                store_kv(k, v, sentence_starter);
-                val = NULL;
+                break;
             }
-            val = varstr_init();
-            if (val == NULL) {
+            perror("load(): internal error");
+            return 1;
+        }
+        if ((!valonly && (k = varstr_pack(key)) == NULL) || (v = varstr_pack(val)) == NULL) {
+            perror("load(): varstr_pack failed");
+            return 1;
+        }
+        key = val = NULL;
+        store_kv(k, v, (is_ss == 1 ? true : false));
+        if (retval == 1) {
+            if ((val = varstr_init()) == NULL) {
                 perror("load(): varstr_init failed");
                 return 1;
             }
-            mode = 1;
+            valonly = true;
+            goto newval; /* http://xkcd.com/292/ */
         }
-        else if (c == NEWLINE) {
-            wchar_t *k = NULL;
-            if (lk == NULL) k = varstr_pack(key);
-            else k = lk;
-            wchar_t *v = varstr_pack(val);
-            lk = NULL;
-            if (k == NULL || v == NULL) {
-                perror("load(): failed to pack varstrs");
-                return 1;
-            }
-            key = NULL;
-            val = NULL;
-            store_kv(k, v, sentence_starter);
-            mode = 2;
-        }
-        else if (c == SENTENCE_STARTER && mode == 0) {
-            sentence_starter = 0;
-        }
-        else if (mode == 1 && key != NULL) {
-            varstr_pushc(val, c);
-        }
-        else if (mode == 0 && key != NULL) {
-            varstr_pushc(key, c);
-        }
-        else {
-            errno = EINVAL;
-            perror("load(): file corrupted");
-            return 1;
-        }
-    }
+    } while (true);
     return 0;
 }
 

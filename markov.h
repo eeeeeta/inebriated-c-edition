@@ -26,8 +26,8 @@ extern struct database *db_init(void);
 
 struct database *markov_database; /**< global database object */
 
-struct kv_node *search_for_key(wchar_t *key);
-struct kv_node *search_for_ss(wchar_t *key);
+extern DBN *DBN_getk(wchar_t *key);
+extern DBN *DBN_getss(wchar_t *key);
 extern DBN *store_kv(wchar_t *k, wchar_t *v, bool ss);
 extern wchar_t *generate_sentence();
 
@@ -40,7 +40,4 @@ extern bool save(char *filename);
 extern char *DB_FILENAME;
 extern char *NET_PORT;
 
-extern void kv_free(struct kv_node *kv);
-extern void kv_free_DPA(DPA *dpa);
-extern void vn_free_DPA(DPA *dpa);
 #endif

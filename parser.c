@@ -48,11 +48,12 @@ extern bool read_data(wchar_t *text, bool is_sentence) {
         read_last = r2w(cur, text);
         if (last != NULL) {
             wchar_t *v;
+            wchar_t *now = last;
             if ((last = v = varstr_pack(cur)) == NULL) {
                 perror("packing varstr in read_data()");
                 return false;
             }
-            store_kv(last, v, is_ss);
+            store_kv(now, v, is_ss);
             is_ss = false;
         }
         if (last == NULL && (last = varstr_pack(cur)) == NULL) {

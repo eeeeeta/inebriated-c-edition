@@ -172,6 +172,7 @@ extern DBN *DBN_store(wchar_t *key, DBN *vptr, bool ss) {
         DBN *orig = DBN_getk(key);
         DBN *lkv = orig;
         for (DBN *curnode = lkv->next; curnode != NULL; curnode = curnode->next) {
+            if (curnode->vptr == vptr) return curnode;
             lkv = curnode;
 #ifndef I_HAVE_A_VERY_BIG_NODE
             /* overflow detection */
@@ -204,8 +205,13 @@ extern DBN *store_kv(wchar_t *k, wchar_t *v, bool ss) {
     if ((vdbn = DBN_getk(v)) == NULL) vdbn = DBN_store(v, NULL, false); /* store the value as a DBN */
     if (vdbn == NULL) return NULL;
     if ((kdbn = DBN_getk(k)) != NULL && kdbn->vptr == NULL) {
+        if (vdbn == kdbn) {
+            /* yay, recursion is fun
+             * do nothing for now, because cba */
+            return kdbn;
+        }
         kdbn->vptr = vdbn;
-        if (ss && DBN_getss(k) == NULL) DPA_store(markov_database->objs, kdbn);
+        if (ss && DBN_getss(k) == NULL) DPA_store(markov_database->sses, kdbn);
         return kdbn;
     }
     return DBN_store(k, vdbn, ss);
