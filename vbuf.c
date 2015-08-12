@@ -84,6 +84,7 @@ static struct varstr *varstr_refill_if_needed(struct varstr *vs, int iu) {
     if ((vs->size - vs->used) <= iu) {
         wchar_t *ptr = realloc(vs->str, sizeof(wchar_t) * (vs->size + iu + VARSTR_REFILL_SIZE));
         if (ptr == NULL) return NULL;
+        wmemset(ptr + vs->size, L'\0', iu + VARSTR_REFILL_SIZE);
         vs->str = ptr;
         vs->size += iu;
         vs->size += VARSTR_REFILL_SIZE;
