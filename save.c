@@ -138,8 +138,8 @@ static signed int rval(FILE *fp, struct varstr *into) {
     };
     return -3;
 }/**
- * Load the database. Returns 0 on success, 1 on error, and 2 if you don't have one.
- */
+  * Load the database. Returns 0 on success, 1 on error, and 2 if you don't have one.
+  */
 extern int load(char *filename) {
     FILE *fp;
     fp = fopen(filename, "r");
@@ -166,7 +166,7 @@ extern int load(char *filename) {
         is_ss = rkey(fp, key);
 newval: if (is_ss >= 0) retval = rval(fp, val);
         if (is_ss < 0 || retval < 0) {
-            if (is_ss != 0) retval = is_ss;
+            if (is_ss < 0) retval = is_ss;
             if (retval == -2) {
                 fwprintf(stderr, L"load(): database corrupted\n");
                 return 1;
@@ -176,6 +176,13 @@ newval: if (is_ss >= 0) retval = rval(fp, val);
                     perror("load(): error reading file");
                     return 1;
                 }
+                if (is_ss < 0) break;
+                if ((k = varstr_pack(key)) == NULL || (v = varstr_pack(val)) == NULL) {
+                    perror("load(): varstr_pack failed");
+                    return 1;
+                }
+                key = val = NULL;
+                store_kv(k, v, is_ss);
                 break;
             }
             perror("load(): internal error");
@@ -196,6 +203,8 @@ newval: if (is_ss >= 0) retval = rval(fp, val);
             goto newval; /* http://xkcd.com/292/ */
         }
     } while (true);
+    if (key != NULL) varstr_free(key);
+    if (val != NULL) varstr_free(val);
     return 0;
 }
 

@@ -39,6 +39,7 @@ static void gen_with_output(void) {
             exit(EXIT_FAILURE);
         }
         wprintf(L"Sentence: \"%ls\"\n", sent);
+        free(sent);
         wprintf(L"Another? (ENTER for yes, Ctrl-D to stop) ");
         c = fgetc(stdin);
     }
@@ -73,6 +74,15 @@ static void infile_with_output(void) {
     wprintf(L"read done!\n");
     save_with_output();
 }
+static void cleanup(void) {
+    register int i = 0;
+    for (DBN *obj = markov_database->objs->keys[i]; i < markov_database->objs->used; obj = markov_database->objs->keys[++i]) {
+        DBN_free_list(obj);
+    };
+    DPA_free(markov_database->objs);
+    DPA_free(markov_database->sses);
+    free(markov_database);
+}
 static void floodgates(void) {
     wprintf(L"opening the floodgates! paste as much data as you wish below (Ctrl-D to stop)\n");
     while (read_input(stdin, false) == 0)
@@ -95,6 +105,7 @@ static void syntax_lecture(char *name) {
 int main(int argc, char *argv[]) {
     int opt;
     wprintf(L"inebriated, C version, by eeeeeta\n");
+    atexit(&cleanup);
     char *locale_ctype = getenv("LC_CTYPE");
     while ((opt = getopt(argc, argv, "d:f:p:l:")) != -1) {
         switch (opt) {

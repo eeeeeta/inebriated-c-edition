@@ -30,6 +30,8 @@ extern DBN *DBN_getk(wchar_t *key);
 extern DBN *DBN_getss(wchar_t *key);
 extern DBN *store_kv(wchar_t *k, wchar_t *v, bool ss);
 extern wchar_t *generate_sentence();
+extern void DBN_free(DBN *dbn);
+extern void DBN_free_list(DBN *dbn);
 
 extern int read_input(FILE *fp, bool is_sentence);
 extern bool read_data(wchar_t *text, bool is_sentence);

@@ -148,7 +148,11 @@ extern DBN *DBN_store(wchar_t *key, DBN *vptr, bool ss) {
     if (DBN_getk(key) == NULL) {
         /* key does not exist */
         kv = malloc(sizeof(DBN));
-        if (kv == NULL) return NULL;
+        if (kv == NULL) {
+            free(key);
+            free(hptr);
+            return NULL;
+        }
         kv->key = key;
         kv->vptr = vptr;
         kv->next = NULL;
@@ -172,7 +176,11 @@ extern DBN *DBN_store(wchar_t *key, DBN *vptr, bool ss) {
         DBN *orig = DBN_getk(key);
         DBN *lkv = orig;
         for (DBN *curnode = lkv->next; curnode != NULL; curnode = curnode->next) {
-            if (curnode->vptr == vptr) return curnode;
+            if (curnode->vptr == vptr) {
+                free(key);
+                free(hptr);
+                return curnode;
+            }
             lkv = curnode;
 #ifndef I_HAVE_A_VERY_BIG_NODE
             /* overflow detection */
